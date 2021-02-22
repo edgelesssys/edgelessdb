@@ -1,0 +1,87 @@
+# MariaDB running on EdgelessRT
+
+```bash
+git clone --recurse-submodules https://github.com/edgelesssys/emariadb.git
+```
+
+## Build libmysqld.a
+
+```bash
+cd server
+mkdir build
+cd build
+cmake .. \
+    -DWITH_EMBEDDED_SERVER=ON\
+    -DPLUGIN_ROCKSDB=AUTO \
+    -DPLUGIN_ARCHIVE=NO \
+    -DPLUGIN_AUDIT_NULL=NO \
+    -DPLUGIN_AUTH_0X0100=NO \
+    -DPLUGIN_AUTH_ED25519=NO \
+    -DPLUGIN_AUTH_SOCKET=NO \
+    -DPLUGIN_AUTH_TEST_PLUGIN=NO \
+    -DPLUGIN_BLACKHOLE=NO \
+    -DPLUGIN_CONNECT=NO \
+    -DPLUGIN_DAEMON_EXAMPLE=NO \
+    -DPLUGIN_DEBUG_KEY_MANAGEMENT=NO \
+    -DPLUGIN_DIALOG_EXAMPLES=NO \
+    -DPLUGIN_DISKS=NO \
+    -DPLUGIN_EXAMPLE=NO \
+    -DPLUGIN_EXAMPLE_KEY_MANAGEMENT=NO \
+    -DPLUGIN_FEDERATED=NO \
+    -DPLUGIN_FEDERATEDX=NO \
+    -DPLUGIN_FEEDBACK=NO \
+    -DPLUGIN_FILE_KEY_MANAGEMENT=NO \
+    -DPLUGIN_FTEXAMPLE=NO \
+    -DPLUGIN_FUNC_TEST=NO \
+    -DPLUGIN_HANDLERSOCKET=NO \
+    -DPLUGIN_INNOBASE=NO \
+    -DPLUGIN_LOCALES=NO \
+    -DPLUGIN_METADATA_LOCK_INFO=NO \
+    -DPLUGIN_MROONGA=NO \
+    -DPLUGIN_PARTITION=NO \
+    -DPLUGIN_PERFSCHEMA=NO \
+    -DPLUGIN_QA_AUTH_CLIENT=NO \
+    -DPLUGIN_QA_AUTH_INTERFACE=NO \
+    -DPLUGIN_QA_AUTH_SERVER=NO \
+    -DPLUGIN_QUERY_CACHE_INFO=NO \
+    -DPLUGIN_QUERY_RESPONSE_TIME=NO \
+    -DPLUGIN_S3=NO \
+    -DPLUGIN_SEQUENCE=NO \
+    -DPLUGIN_SERVER_AUDIT=NO \
+    -DPLUGIN_SIMPLE_PASSWORD_CHECK=NO \
+    -DPLUGIN_SPHINX=NO \
+    -DPLUGIN_SPIDER=NO \
+    -DPLUGIN_SQL_ERRLOG=NO \
+    -DPLUGIN_TEST_SQL_DISCOVERY=NO \
+    -DPLUGIN_TEST_SQL_SERVICE=NO \
+    -DPLUGIN_TEST_VERSIONING=NO \
+    -DPLUGIN_THREAD_POOL_INFO=NO \
+    -DPLUGIN_TYPE_MYSQL_JSON=NO \
+    -DPLUGIN_TYPE_TEST=NO \
+    -DPLUGIN_USER_VARIABLES=NO \
+    -DPLUGIN_WSREP_INFO=NO
+make -j 8
+```
+
+## Build emariadbd
+
+```bash
+mkdir build
+cd build
+cmake ..
+make -j 8
+```
+
+## Run MariaDB server
+
+### Setup MariaDB
+
+```bash
+cd build
+../server/build/scripts/mysql_install_db --srcdir=../server/ --datadir=.
+```
+
+```bash
+cd build
+./emariadbd
+```
