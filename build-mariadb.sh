@@ -1,10 +1,12 @@
 #!/bin/bash
 
+sed -i s/MODULE_ONLY/MANDATORY/g ./server/storage/rocksdb/CMakeLists.txt
+
 mkdir -p ./server/build
 pushd ./server/build
 cmake .. \
-    -DWITH_EMBEDDED_SERVER=ON\
-    -DPLUGIN_ROCKSDB=AUTO \
+    -DWITHOUT_DYNAMIC_PLUGINS=1 \
+    -DPLUGIN_ROCKSDB=STATIC \
     -DPLUGIN_ARCHIVE=NO \
     -DPLUGIN_AUDIT_NULL=NO \
     -DPLUGIN_AUTH_0X0100=NO \
@@ -52,5 +54,6 @@ cmake .. \
     -DPLUGIN_TYPE_TEST=NO \
     -DPLUGIN_USER_VARIABLES=NO \
     -DPLUGIN_WSREP_INFO=NO
+    # -DWITH_EMBEDDED_SERVER=1 \
 make -j 8
 popd
