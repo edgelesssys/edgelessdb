@@ -1,0 +1,28 @@
+diff --git a/storage/rocksdb/CMakeLists.txt b/storage/rocksdb/CMakeLists.txt
+index c2fc8de8149..cff5ac101fa 100644
+--- a/storage/rocksdb/CMakeLists.txt
++++ b/storage/rocksdb/CMakeLists.txt
+@@ -121,12 +121,12 @@ else()
+   SET(ATOMIC_EXTRA_LIBS)
+ endif()
+ 
+-MYSQL_ADD_PLUGIN(rocksdb ${ROCKSDB_SE_SOURCES} MODULE_ONLY STORAGE_ENGINE
++MYSQL_ADD_PLUGIN(rocksdb_se ${ROCKSDB_SE_SOURCES} MANDATORY STORAGE_ENGINE
+                  MODULE_OUTPUT_NAME ha_rocksdb
+                  LINK_LIBRARIES ${ATOMIC_EXTRA_LIBS}
+                  COMPONENT rocksdb-engine)
+ 
+-IF(NOT TARGET rocksdb)
++IF(NOT TARGET rocksdb_se)
+   # Bail out if compilation with rocksdb engine is not requested
+   RETURN()
+ ENDIF()
+@@ -197,7 +197,7 @@ TARGET_LINK_LIBRARIES(rocksdb_aux_lib ${ATOMIC_EXTRA_LIBS})
+ #ENDIF()
+ 
+ 
+-TARGET_LINK_LIBRARIES(rocksdb rocksdb_aux_lib)
++TARGET_LINK_LIBRARIES(rocksdb_se rocksdb_aux_lib)
+ 
+ CHECK_FUNCTION_EXISTS(sched_getcpu  HAVE_SCHED_GETCPU)
+ IF(HAVE_SCHED_GETCPU)

@@ -1,13 +1,7 @@
 # MariaDB running on EdgelessRT
 
 ```bash
-git clone --recurse-submodules https://github.com/edgelesssys/emariadb.git
-```
-
-## Build libmysqld.a
-
-```bash
-./build-mariadb.sh
+git clone https://github.com/edgelesssys/emariadb.git
 ```
 
 ## Build emariadbd
@@ -25,10 +19,10 @@ make -j 8
 
 ```bash
 cd build
-../server/build/scripts/mysql_install_db --srcdir=../server/ --datadir=.
+mariadb/scripts/mysql_install_db --srcdir=../server/ --auth-root-authentication-method=normal
 ```
 
 ```bash
 cd build
-./emariadbd
+./emariadbd --datadir=./data --default-storage-engine=rocksdb
 ```
