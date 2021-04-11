@@ -7,6 +7,7 @@ endif ()
 
 include(ExternalProject)
 include(ProcessorCount)
+find_package(OpenEnclave CONFIG REQUIRED)
 
 execute_process(
   COMMAND git submodule update --init --depth=1 --recursive server
@@ -78,20 +79,16 @@ ExternalProject_Add(mariadb
 
 set(MARIADB ${CMAKE_BINARY_DIR}/mariadb)
 
-add_executable(emariadbd emariadbd.cpp)
-add_dependencies(emariadbd mariadb)
-
-target_link_libraries(emariadbd -static-libgcc -static-libstdc++
+set(MARIADB_LIBS
   ${MARIADB}/sql/libsql.a
   ${MARIADB}/sql/libsql_builtins.a
   ${MARIADB}/vio/libvio.a
   ${MARIADB}/extra/pcre2/src/pcre2-build/libpcre2-8.a
   ${MARIADB}/tpool/libtpool.a
-  libcrypt.a
   ${MARIADB}/storage/maria/libaria.a
   ${MARIADB}/mysys_ssl/libmysys_ssl.a
-  libssl.a
-  libcrypto.a
+  ssl
+  crypto
   ${MARIADB}/sql/libsql_sequence.a
   ${MARIADB}/sql/libwsrep.a
   ${MARIADB}/storage/csv/libcsv.a
@@ -100,19 +97,50 @@ target_link_libraries(emariadbd -static-libgcc -static-libstdc++
   ${MARIADB}/mysys/libmysys.a
   ${MARIADB}/dbug/libdbug.a
   ${MARIADB}/strings/libstrings.a
-  libz.a
-  m
+  z
   ${MARIADB}/storage/myisammrg/libmyisammrg.a
   ${MARIADB}/plugin/type_geom/libtype_geom.a
   ${MARIADB}/plugin/type_inet/libtype_inet.a
   ${MARIADB}/plugin/userstat/libuserstat.a
   ${MARIADB}/wsrep-lib/src/libwsrep-lib.a
-  pthread
-  dl
   ${MARIADB}/wsrep-lib/wsrep-API/libwsrep_api_v26.a
   ${MARIADB}/storage/rocksdb/librocksdb_se.a
   ${MARIADB}/storage/rocksdb/librocksdb_aux_lib.a
   ${MARIADB}/storage/rocksdb/librocksdblib.a
-  liblz4.a
+  lz4
+)
+
+add_executable(emariadbd emariadbd.cpp)
+add_dependencies(emariadbd mariadb)
+
+target_link_libraries(emariadbd -static-libgcc -static-libstdc++
+  -Wl,-Bstatic ${MARIADB_LIBS} -Wl,-Bdynamic
+  crypt
+  m
+  pthread
+  dl
   rt
 )
+
+add_executable(enclave emariadbd.cpp stubs.c)
+add_dependencies(enclave mariadb)
+
+target_link_libraries(enclave
+  openenclave::oeenclave
+  openenclave::ertdeventry
+  ${MARIADB_LIBS})
+
+# Generate key
+add_custom_command(
+  OUTPUT private.pem public.pem
+  COMMAND openssl genrsa -out private.pem -3 3072
+  COMMAND openssl rsa -in private.pem -pubout -out public.pem)
+
+# Sign enclave
+add_custom_command(
+  OUTPUT enclave.signed
+  DEPENDS enclave enclave.conf private.pem
+  COMMAND openenclave::oesign sign -e $<TARGET_FILE:enclave> -c
+          ${CMAKE_SOURCE_DIR}/enclave.conf -k private.pem)
+
+add_custom_target(sign ALL DEPENDS enclave.signed)

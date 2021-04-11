@@ -24,5 +24,5 @@ mariadb/scripts/mysql_install_db --srcdir=../server/ --auth-root-authentication-
 
 ```bash
 cd build
-./emariadbd --datadir=./data --default-storage-engine=rocksdb
+erthost enclave.signed --datadir=./data --default-storage-engine=rocksdb
 ```
