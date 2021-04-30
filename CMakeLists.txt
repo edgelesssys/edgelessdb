@@ -18,11 +18,18 @@ ProcessorCount(NPROC)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_EXTENSIONS OFF)
 add_compile_options(-Wall -Wextra -pedantic -Werror)
+if(TIDY)
+  set(CMAKE_CXX_CLANG_TIDY clang-tidy-10)
+endif()
+
+#
+# build mariadb
+#
 
 ExternalProject_Add(mariadb
   URL ${CMAKE_SOURCE_DIR}/server
   SOURCE_DIR mariadb-src
-  PATCH_COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/mariadb.patch
+  PATCH_COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb.patch
   BINARY_DIR mariadb
   CMAKE_ARGS
     -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
@@ -110,37 +117,44 @@ set(MARIADB_LIBS
   lz4
 )
 
-add_executable(emariadbd emariadbd.cpp)
-add_dependencies(emariadbd mariadb)
+set(MARIADB_LIBC -static-libgcc -static-libstdc++
+  crypt m pthread dl rt)
 
-target_link_libraries(emariadbd -static-libgcc -static-libstdc++
-  -Wl,-Bstatic ${MARIADB_LIBS} -Wl,-Bdynamic
-  crypt
-  m
-  pthread
-  dl
-  rt
-)
-
-add_executable(enclave emariadbd.cpp stubs.c)
-add_dependencies(enclave mariadb)
-
-target_link_libraries(enclave
-  openenclave::oeenclave
-  openenclave::ertdeventry
-  ${MARIADB_LIBS})
-
+#
 # Generate key
+#
+
 add_custom_command(
   OUTPUT private.pem public.pem
   COMMAND openssl genrsa -out private.pem -3 3072
   COMMAND openssl rsa -in private.pem -pubout -out public.pem)
 
-# Sign enclave
-add_custom_command(
-  OUTPUT enclave.signed
-  DEPENDS enclave enclave.conf private.pem
-  COMMAND openenclave::oesign sign -e $<TARGET_FILE:enclave> -c
-          ${CMAKE_SOURCE_DIR}/enclave.conf -k private.pem)
+add_custom_target(genkey DEPENDS src/enclave.conf private.pem public.pem)
 
-add_custom_target(sign ALL DEPENDS enclave.signed)
+#
+# build mariadbd (statically linked) for testing purposes
+#
+
+add_executable(mariadbd server/sql/main.cc)
+add_dependencies(mariadbd mariadb)
+set_target_properties(mariadbd PROPERTIES EXCLUDE_FROM_ALL ON)
+
+target_link_libraries(mariadbd
+  -Wl,-Bstatic ${MARIADB_LIBS} -Wl,-Bdynamic
+  ${MARIADB_LIBC})
+
+#
+# build emariadbd
+#
+
+add_executable(emariadbd server/sql/main.cc src/stubs.c)
+add_dependencies(emariadbd mariadb genkey)
+
+target_link_libraries(emariadbd
+  openenclave::oeenclave
+  openenclave::ertdeventry
+  ${MARIADB_LIBS})
+
+add_custom_command(TARGET emariadbd POST_BUILD
+  COMMAND openenclave::oesign sign -e $<TARGET_FILE:emariadbd> -c
+          ${CMAKE_SOURCE_DIR}/src/enclave.conf -k private.pem)

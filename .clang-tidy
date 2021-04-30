@@ -1,0 +1,37 @@
+WarningsAsErrors: '*'
+HeaderFilterRegex: '\.h$'
+Checks: "*,\
+-cert-err58-cpp,\
+-cppcoreguidelines-avoid-goto,\
+-cppcoreguidelines-avoid-magic-numbers,\
+-cppcoreguidelines-owning-memory,\
+-cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
+-cppcoreguidelines-pro-bounds-pointer-arithmetic,\
+-cppcoreguidelines-pro-type-cstyle-cast,\
+-cppcoreguidelines-pro-type-reinterpret-cast,\
+-cppcoreguidelines-pro-type-vararg,\
+-cppcoreguidelines-special-member-functions,\
+-fuchsia-default-arguments-calls,\
+-fuchsia-statically-constructed-objects,\
+-google-build-using-namespace,\
+-google-readability-braces-around-statements,\
+-google-readability-casting,\
+-google-readability-todo,\
+-google-runtime-references,\
+-hicpp-avoid-goto,\
+-hicpp-braces-around-statements,\
+-hicpp-no-array-decay,\
+-hicpp-signed-bitwise,\
+-hicpp-special-member-functions,\
+-hicpp-vararg,\
+-llvm-header-guard,\
+-llvm-include-order,\
+-llvm-qualified-auto,\
+-misc-non-private-member-variables-in-classes,\
+-modernize-use-default-member-init,\
+-modernize-use-trailing-return-type,\
+-modernize-use-using,\
+-readability-braces-around-statements,\
+-readability-implicit-bool-conversion,\
+-readability-magic-numbers,\
+-readability-qualified-auto"
