@@ -33,6 +33,7 @@ import (
 )
 
 var exe = flag.String("e", "", "EDB executable")
+var showEdbOutput = flag.Bool("show-edb-output", false, "")
 var addrAPI, addrDB string
 
 func TestMain(m *testing.M) {
@@ -289,10 +290,17 @@ func cleanupConfig(filename string) {
 
 func startEDB(configFilename string) *os.Process {
 	cmd := exec.Command(*exe, "-c", configFilename)
-	output := make(chan []byte)
 	go func() {
-		out, _ := cmd.CombinedOutput()
-		output <- out
+		if *showEdbOutput {
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stdout
+			if err := cmd.Run(); isUnexpectedEDBError(err) {
+				panic(err)
+			}
+		} else if out, err := cmd.CombinedOutput(); isUnexpectedEDBError(err) {
+			log.Println("edb output:\n\n" + string(out))
+			panic(err)
+		}
 	}()
 
 	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
@@ -301,13 +309,6 @@ func startEDB(configFilename string) *os.Process {
 	log.Println("EDB starting ...")
 	for {
 		time.Sleep(10 * time.Millisecond)
-		select {
-		case out := <-output:
-			// process died
-			log.Println(string(out))
-			return nil
-		default:
-		}
 		resp, err := client.Head(url.String())
 		if err == nil {
 			log.Println("EDB started")
@@ -318,6 +319,10 @@ func startEDB(configFilename string) *os.Process {
 			return cmd.Process
 		}
 	}
+}
+
+func isUnexpectedEDBError(err error) bool {
+	return err != nil && err.Error() != "signal: killed"
 }
 
 func createCertificate(commonName, signerCert, signerKey string) (cert, key string) {
