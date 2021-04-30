@@ -19,3 +19,7 @@ func (r RuntimeMock) GetRemoteReport(reportData []byte) ([]byte, error) {
 func (r RuntimeMock) GetProductSealKey() ([]byte, error) {
 	return []byte{3, 4, 5}, nil
 }
+
+// RestartHostProcess restarts the process hosting this enclave.
+func (RuntimeMock) RestartHostProcess() {
+}

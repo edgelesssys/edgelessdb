@@ -79,9 +79,11 @@ func (c *Core) Initialize(jsonManifest []byte) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := c.db.Start(); err != nil {
-		return nil, err
-	}
+	fmt.Println("restarting ...")
+	go func() {
+		time.Sleep(time.Second)
+		c.rt.RestartHostProcess()
+	}()
 
 	return recoveryKey, nil
 }
