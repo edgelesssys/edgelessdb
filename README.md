@@ -1,28 +1,23 @@
-# MariaDB running on EdgelessRT
+# EDB
 
-```bash
-git clone https://github.com/edgelesssys/emariadb.git
-```
-
-## Build emariadbd
-
-```bash
+## Build
+```sh
 mkdir build
 cd build
 cmake ..
-make -j 8
+make -j`nproc`
 ```
 
-## Run MariaDB server
-
-### Setup MariaDB
-
-```bash
-cd build
-mariadb/scripts/mysql_install_db --srcdir=../server/ --auth-root-authentication-method=normal
+## Test
+```sh
+go test ./...
+go test -v -tags integration ./edb -e ../build/edb
 ```
 
-```bash
+### Run emariadbd
+```sh
 cd build
-erthost enclave.signed --datadir=./data --default-storage-engine=rocksdb
+make emariadbd
+mariadb/scripts/mysql_install_db --srcdir=../server --auth-root-authentication-method=normal
+erthost emariadbd.signed --datadir=./data --default-storage-engine=rocksdb
 ```
