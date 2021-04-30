@@ -7,4 +7,7 @@ type Runtime interface {
 
 	// GetProductSealKey gets a key derived from the signer and product id of the enclave.
 	GetProductSealKey() ([]byte, error)
+
+	// RestartHostProcess restarts the process hosting this enclave.
+	RestartHostProcess()
 }
