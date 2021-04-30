@@ -28,8 +28,8 @@ type TidbLauncher interface {
 	Stop()
 }
 
-// Tidb is a secure database based on TiDB.
-type Tidb struct {
+// Mariadb is a secure database based on MariaDB.
+type Mariadb struct {
 	internalPath, externalPath       string
 	internalAddress, externalAddress string
 	launcher                         TidbLauncher
@@ -40,9 +40,9 @@ type Tidb struct {
 	ca                               string
 }
 
-// NewTidb creates a new Tidb object.
-func NewTidb(internalPath, externalPath, internalAddress, externalAddress, certificateCommonName string, launcher TidbLauncher) (*Tidb, error) {
-	d := &Tidb{
+// NewMariadb creates a new Mariadb object.
+func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateCommonName string, launcher TidbLauncher) (*Mariadb, error) {
+	d := &Mariadb{
 		internalPath:    internalPath,
 		externalPath:    externalPath,
 		internalAddress: internalAddress,
@@ -98,12 +98,12 @@ func NewTidb(internalPath, externalPath, internalAddress, externalAddress, certi
 }
 
 // GetCertificate gets the database certificate.
-func (d *Tidb) GetCertificate() ([]byte, crypto.PrivateKey) {
+func (d *Mariadb) GetCertificate() ([]byte, crypto.PrivateKey) {
 	return d.cert, d.key
 }
 
 // Initialize sets up a database according to the jsonManifest.
-func (d *Tidb) Initialize(jsonManifest []byte) error {
+func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	if d.manifestSig != nil {
 		return errors.New("already initialized")
 	}
@@ -134,7 +134,7 @@ func (d *Tidb) Initialize(jsonManifest []byte) error {
 }
 
 // Start starts the database.
-func (d *Tidb) Start() error {
+func (d *Mariadb) Start() error {
 	if d.manifestSig == nil {
 		d.log.Println("DB has not been initialized, waiting for manifest.")
 		return nil
@@ -152,17 +152,17 @@ func (d *Tidb) Start() error {
 }
 
 // GetManifestSignature returns the signature of the manifest that has been used to initialize the database.
-func (d *Tidb) GetManifestSignature() []byte {
+func (d *Mariadb) GetManifestSignature() []byte {
 	return d.manifestSig
 }
 
-func (d *Tidb) setManifestSignature(jsonManifest []byte) {
+func (d *Mariadb) setManifestSignature(jsonManifest []byte) {
 	sig := sha256.Sum256(jsonManifest)
 	d.manifestSig = sig[:]
 }
 
-// configure TiDB for internal socket without security
-func (d *Tidb) configureInternal() error {
+// configure MariaDB for internal socket without security
+func (d *Mariadb) configureInternal() error {
 	host, port := splitHostPort(d.internalAddress, "3306")
 
 	cfg := `
@@ -185,8 +185,8 @@ report-status = false
 	return ioutil.WriteFile(filepath.Join(d.internalPath, filenameTidbcfg), []byte(cfg), 0600)
 }
 
-// configure TiDB for external socket with security
-func (d *Tidb) configureExternal() error {
+// configure MariaDB for external socket with security
+func (d *Mariadb) configureExternal() error {
 	pathCA := filepath.Join(d.internalPath, filenameCA)
 	pathCert := filepath.Join(d.internalPath, filenameCert)
 	pathKey := filepath.Join(d.internalPath, filenameKey)
