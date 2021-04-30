@@ -41,20 +41,6 @@ func TestSplitHostPort(t *testing.T) {
 	assert.Equal("port", p)
 }
 
-func TestGeneratePassword(t *testing.T) {
-	assert := assert.New(t)
-
-	p1, err := generatePassword()
-	assert.Nil(err)
-	assert.Equal(30, len(p1))
-
-	p2, err := generatePassword()
-	assert.Nil(err)
-	assert.Equal(30, len(p2))
-
-	assert.NotEqual(p1, p2)
-}
-
 func TestToPEM(t *testing.T) {
 	assert := assert.New(t)
 

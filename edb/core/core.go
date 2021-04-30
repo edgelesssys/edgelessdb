@@ -31,17 +31,7 @@ type Core struct {
 
 // NewCore creates a new Core object.
 func NewCore(rt rt.Runtime, db db.Database) *Core {
-	c := Core{rt: rt, db: db}
-
-	cert, _ := db.GetCertificate()
-	hash := sha256.Sum256(cert)
-	var err error
-	c.report, err = rt.GetRemoteReport(hash[:])
-	if err != nil {
-		fmt.Printf("Failed to get quote: %v\n", err)
-	}
-
-	return &c
+	return &Core{rt: rt, db: db}
 }
 
 // GetManifestSignature returns the signature of the manifest that has been used to initialize the database.
@@ -98,7 +88,18 @@ func (c *Core) Initialize(jsonManifest []byte) ([]byte, error) {
 
 // StartDatabase starts the database.
 func (c *Core) StartDatabase() error {
-	return c.db.Start()
+	if err := c.db.Start(); err != nil {
+		return err
+	}
+
+	cert, _ := c.db.GetCertificate()
+	hash := sha256.Sum256(cert)
+	var err error
+	c.report, err = c.rt.GetRemoteReport(hash[:])
+	if err != nil {
+		fmt.Printf("Failed to get quote: %v\n", err)
+	}
+	return nil
 }
 
 func (c *Core) getConfigForClient(chi *tls.ClientHelloInfo) (*tls.Config, error) {
