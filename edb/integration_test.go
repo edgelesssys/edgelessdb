@@ -27,7 +27,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgelesssys/edb/edbra"
+	"github.com/edgelesssys/era/era"
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
 )
@@ -103,37 +103,32 @@ func TestReaderWriter(t *testing.T) {
 
 	// Owner
 	{
-		serverCert, err := edbra.InsecureGetCertificate(addrAPI)
-		assert.Nil(err)
+		serverCert := getServerCertificate()
 		assert.Nil(postManifest(serverCert, manifest))
 	}
 
 	// Writer
 	{
-		serverCert, err := edbra.InsecureGetCertificate(addrAPI)
-		assert.Nil(err)
-		sig, err := edbra.GetManifestSignature(addrAPI, serverCert)
-		assert.Nil(err)
+		serverCert := getServerCertificate()
+		sig := getManifestSignature(serverCert)
 		assert.Equal(calculateManifestSignature(manifest), sig)
 
 		db := sqlOpen("writer", writerCert, writerKey, serverCert)
-		_, err = db.Exec("INSERT INTO test.data VALUES (2), (6)")
+		_, err := db.Exec("INSERT INTO test.data VALUES (2), (6)")
 		db.Close()
 		assert.Nil(err)
 	}
 
 	// Reader
 	{
-		serverCert, err := edbra.InsecureGetCertificate(addrAPI)
-		assert.Nil(err)
-		sig, err := edbra.GetManifestSignature(addrAPI, serverCert)
-		assert.Nil(err)
+		serverCert := getServerCertificate()
+		sig := getManifestSignature(serverCert)
 		assert.Equal(calculateManifestSignature(manifest), sig)
 
 		var avg float64
 		db := sqlOpen("reader", readerCert, readerKey, serverCert)
 		assert.Nil(db.QueryRow("SELECT AVG(i) FROM test.data").Scan(&avg))
-		_, err = db.Exec("INSERT INTO test.data VALUES (3)")
+		_, err := db.Exec("INSERT INTO test.data VALUES (3)")
 		db.Close()
 		assert.NotNil(err)
 		assert.Equal(4., avg)
@@ -158,12 +153,11 @@ func TestPersistence(t *testing.T) {
 	process := startEDB(cfgFilename)
 	assert.NotNil(process)
 
-	serverCert, err := edbra.InsecureGetCertificate(addrAPI)
-	assert.Nil(err)
+	serverCert := getServerCertificate()
 	assert.Nil(postManifest(serverCert, manifest))
 
 	db := sqlOpen("usr", usrCert, usrKey, serverCert)
-	_, err = db.Exec("INSERT INTO test.data VALUES (2)")
+	_, err := db.Exec("INSERT INTO test.data VALUES (2)")
 	db.Close()
 	assert.Nil(err)
 
@@ -197,8 +191,7 @@ func TestInvalidQueryInManifest(t *testing.T) {
 	process := startEDB(cfgFilename)
 	assert.NotNil(process)
 
-	serverCert, err := edbra.InsecureGetCertificate(addrAPI)
-	assert.Nil(err)
+	serverCert := getServerCertificate()
 
 	assert.NotNil(postManifest(serverCert, createManifest("", []string{
 		"CREATE TABL test.data (i INT)",
@@ -226,8 +219,7 @@ func TestCurl(t *testing.T) {
 	assert.NotNil(process)
 	defer process.Kill()
 
-	cert, err := edbra.InsecureGetCertificate(addrAPI)
-	assert.Nil(err)
+	cert := getServerCertificate()
 
 	// Write certificate to temp file.
 	certFile, err := ioutil.TempFile("", "")
@@ -353,6 +345,14 @@ func createCertificate(commonName, signerCert, signerKey string) (cert, key stri
 	return string(pemCert), string(pemKey)
 }
 
+func getServerCertificate() string {
+	blocks, err := era.InsecureGetCertificate(addrAPI)
+	if err != nil {
+		panic(err)
+	}
+	return string(pem.EncodeToMemory(blocks[0]))
+}
+
 func createManifest(ca string, sql []string) []byte {
 	manifest := struct {
 		SQL []string
@@ -370,15 +370,30 @@ func calculateManifestSignature(manifest []byte) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func postManifest(serverCert string, manifest []byte) error {
-	pool := x509.NewCertPool()
-	if ok := pool.AppendCertsFromPEM([]byte(serverCert)); !ok {
-		panic("AppendCertsFromPEM failed")
-	}
+func getManifestSignature(serverCert string) string {
+	client := createHttpClient(serverCert)
+	url := url.URL{Scheme: "https", Host: addrAPI, Path: "signature"}
 
-	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
+	resp, err := client.Get(url.String())
+	if err != nil {
+		panic(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		panic(resp.Status)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		panic(err)
+	}
+	return string(body)
+}
+
+func postManifest(serverCert string, manifest []byte) error {
+	client := createHttpClient(serverCert)
 	url := url.URL{Scheme: "https", Host: addrAPI, Path: "manifest"}
 
+	log.Print("posting manifest ...")
 	resp, err := client.Post(url.String(), "", bytes.NewReader(manifest))
 	if err != nil {
 		panic(err)
@@ -387,7 +402,14 @@ func postManifest(serverCert string, manifest []byte) error {
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(resp.Status)
 	}
-	return nil
+}
+
+func createHttpClient(serverCert string) http.Client {
+	pool := x509.NewCertPool()
+	if ok := pool.AppendCertsFromPEM([]byte(serverCert)); !ok {
+		panic("AppendCertsFromPEM failed")
+	}
+	return http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{RootCAs: pool}}}
 }
 
 func sqlOpen(user, userCert, userKey, serverCert string) *sql.DB {
