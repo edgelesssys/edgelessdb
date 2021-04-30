@@ -1,5 +1,7 @@
 package db
 
+//go:generate sh -c "./mariadb_gen_bootstrap.sh ../../server > mariadbbootstrap.go"
+
 import (
 	"crypto"
 	"crypto/sha256"
@@ -158,11 +160,15 @@ func (d *Mariadb) configureBootstrap(sql []string, jsonManifest []byte) error {
 	}
 
 	init := fmt.Sprintf(`
+CREATE DATABASE mysql;
+USE mysql;
+%v
+FLUSH PRIVILEGES;
 %v
 CREATE DATABASE $edgeless;
 CREATE TABLE $edgeless.config (c BLOB, k BLOB, m BLOB);
 INSERT INTO $edgeless.config VALUES (%#x, %#x, %#x);
-`, queries, d.cert, key, jsonManifest)
+`, mariadbBootstrap, queries, d.cert, key, jsonManifest)
 
 	cnf := `
 [mysqld]
