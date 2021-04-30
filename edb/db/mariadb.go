@@ -22,17 +22,16 @@ const (
 	filenameTidbcfg = "tidbcfg"
 )
 
-// TidbLauncher is used to start and stop TiDB.
-type TidbLauncher interface {
-	Start()
-	Stop()
+// Mariadbd is used to control mariadbd.
+type Mariadbd interface {
+	Main(cnfPath string) int
 }
 
 // Mariadb is a secure database based on MariaDB.
 type Mariadb struct {
 	internalPath, externalPath       string
 	internalAddress, externalAddress string
-	launcher                         TidbLauncher
+	mariadbd                         Mariadbd
 	log                              *log.Logger
 	cert                             []byte
 	key                              crypto.PrivateKey
@@ -41,13 +40,13 @@ type Mariadb struct {
 }
 
 // NewMariadb creates a new Mariadb object.
-func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateCommonName string, launcher TidbLauncher) (*Mariadb, error) {
+func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateCommonName string, mariadbd Mariadbd) (*Mariadb, error) {
 	d := &Mariadb{
 		internalPath:    internalPath,
 		externalPath:    externalPath,
 		internalAddress: internalAddress,
 		externalAddress: externalAddress,
-		launcher:        launcher,
+		mariadbd:        mariadbd,
 		log:             log.New(os.Stdout, "[EDB] ", log.LstdFlags),
 	}
 
@@ -55,8 +54,8 @@ func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, ce
 	if err := d.configureInternal(); err != nil {
 		return nil, err
 	}
-	d.launcher.Start()
-	defer d.launcher.Stop()
+	// d.launcher.Start()
+	// defer d.launcher.Stop()
 
 	cert, key, jsonManifest, err := getConfigFromSQL(d.internalAddress)
 	if err != nil {
@@ -119,9 +118,9 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 
 	// For initial configuration, we start TiDB using internal sockets.
 	d.log.Println("initializing ...")
-	d.launcher.Start()
+	// d.launcher.Start()
 	err := execInitialSQL(man.SQL, d.internalAddress, jsonManifest)
-	d.launcher.Stop()
+	// d.launcher.Stop()
 	if err != nil {
 		d.log.Println(err)
 		return err
@@ -145,7 +144,7 @@ func (d *Mariadb) Start() error {
 		return err
 	}
 	d.log.Println("starting up ...")
-	d.launcher.Start()
+	// d.launcher.Start()
 	d.log.Println("DB is running.")
 
 	return nil

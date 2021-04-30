@@ -144,11 +144,12 @@ target_link_libraries(mariadbd
   ${MARIADB_LIBC})
 
 #
-# build emariadbd
+# build emariadbd for testing purposes
 #
 
 add_executable(emariadbd server/sql/main.cc src/stubs.c)
 add_dependencies(emariadbd mariadb genkey)
+set_target_properties(emariadbd PROPERTIES EXCLUDE_FROM_ALL ON)
 
 target_link_libraries(emariadbd
   openenclave::oeenclave
@@ -158,3 +159,16 @@ target_link_libraries(emariadbd
 add_custom_command(TARGET emariadbd POST_BUILD
   COMMAND openenclave::oesign sign -e $<TARGET_FILE:emariadbd> -c
           ${CMAKE_SOURCE_DIR}/src/enclave.conf -k private.pem)
+
+#
+# build edb-noenclave
+#
+
+add_custom_target(edblib go build -buildmode=c-archive ${CMAKE_SOURCE_DIR}/cmd/edb)
+add_executable(edb src/invokemain.cc)
+add_dependencies(edb edblib mariadb)
+
+target_link_libraries(edb
+  ${CMAKE_BINARY_DIR}/edb.a
+  -Wl,-Bstatic ${MARIADB_LIBS} -Wl,-Bdynamic
+  ${MARIADB_LIBC})

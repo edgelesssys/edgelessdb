@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
 	"flag"
 	"io/ioutil"
 	"os"
@@ -9,9 +10,7 @@ import (
 
 	"github.com/edgelesssys/edb/edb/core"
 	"github.com/edgelesssys/edb/edb/db"
-	"github.com/edgelesssys/edb/edb/rt"
 	"github.com/edgelesssys/edb/edb/server"
-	"github.com/edgelesssys/edb/tidb"
 )
 
 func main() {
@@ -35,12 +34,12 @@ func main() {
 		}
 	}
 	cfg.DataPath, _ = filepath.Abs(cfg.DataPath)
+	os.MkdirAll(cfg.DataPath, 0700)
 
-	rt := rt.RuntimeMock{}
+	rt := runtime{}
 	internalPath, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(internalPath)
-	launcher := tidb.Launcher{ConfigPath: filepath.Join(internalPath, "tidbcfg")}
-	db, err := db.NewTidb(internalPath, cfg.DataPath, "127.0.0.1", cfg.DatabaseAddress, "localhost", &launcher)
+	db, err := db.NewMariadb(internalPath, cfg.DataPath, "127.0.0.1", cfg.DatabaseAddress, "localhost", mariadbd{})
 	if err != nil {
 		panic(err)
 	}
@@ -51,4 +50,14 @@ func main() {
 		panic(err)
 	}
 	server.RunServer(mux, cfg.APIAddress, core.GetTLSConfig())
+}
+
+type runtime struct{}
+
+func (runtime) GetRemoteReport(reportData []byte) ([]byte, error) {
+	return nil, errors.New("GetRemoteReport: not running in an enclave")
+}
+
+func (runtime) GetProductSealKey() ([]byte, error) {
+	return nil, errors.New("GetProductSealKey: not running in an enclave")
 }
