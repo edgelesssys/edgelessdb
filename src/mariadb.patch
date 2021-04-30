@@ -14,19 +14,73 @@ index adf2d39046a..e4bef7296e3 100644
  #define HAVE_OPEN_PARENT_DIR_NOSYMLINKS
  const char *my_open_parent_dir_nosymlinks(const char *pathname, int *pdfd);
  #define NOSYMLINK_FUNCTION_BODY(AT,NOAT)                                \
+diff --git a/sql/CMakeLists.txt b/sql/CMakeLists.txt
+index b9cd418f295..b680ffe0b31 100644
+--- a/sql/CMakeLists.txt
++++ b/sql/CMakeLists.txt
+@@ -195,7 +195,7 @@ RECOMPILE_FOR_EMBEDDED)
+ MYSQL_ADD_PLUGIN(sql_sequence ha_sequence.cc STORAGE_ENGINE MANDATORY STATIC_ONLY
+ RECOMPILE_FOR_EMBEDDED)
+ 
+-ADD_LIBRARY(sql STATIC ${SQL_SOURCE})
++ADD_LIBRARY(sql STATIC ${SQL_SOURCE} ${EDBSRC}/mysqld_edb.cc)
+ MAYBE_DISABLE_IPO(sql)
+ DTRACE_INSTRUMENT(sql)
+ TARGET_LINK_LIBRARIES(sql
 diff --git a/sql/mysqld.cc b/sql/mysqld.cc
-index 48a09d15755..b5e8b6f3e54 100644
+index 48a09d15755..02e27affb4d 100644
 --- a/sql/mysqld.cc
 +++ b/sql/mysqld.cc
-@@ -5510,7 +5510,7 @@ int mysqld_main(int argc, char **argv)
+@@ -5483,7 +5483,6 @@ int mysqld_main(int argc, char **argv)
+   if (init_server_components())
+     unireg_abort(1);
+ 
+-  init_ssl();
+   network_init();
+ 
+ #ifdef _WIN32
+@@ -5510,14 +5509,27 @@ int mysqld_main(int argc, char **argv)
      init signals & alarm
      After this we can't quit by a simple unireg_abort
    */
 -  start_signal_handler();				// Creates pidfile
 +  (void)start_signal_handler; // EDG: signals not supported
  
-   if (mysql_rm_tmp_tables() || acl_init(opt_noacl) ||
+-  if (mysql_rm_tmp_tables() || acl_init(opt_noacl) ||
++  if (mysql_rm_tmp_tables() || acl_init(true) ||
        my_tz_init((THD *)0, default_tz_name, opt_bootstrap))
+     unireg_abort(1);
+ 
++  // EDG: listen on an internal socket for edb initialization before initializing ssl and acl
++  void edgeless_listen_internal();
++  edgeless_listen_internal();
++  init_ssl();
++
+   if (!opt_noacl)
++  {
++    // EDG: do what acl_init(false) would have done
++    THD thd(0);
++    thd.thread_stack= reinterpret_cast<char*>(&thd);
++    thd.store_globals();
++    acl_reload(&thd);
++
+     (void) grant_init();
++  }
+ 
+   udf_init();
+ 
+@@ -5573,6 +5585,11 @@ int mysqld_main(int argc, char **argv)
+   if (opt_bootstrap)
+   {
+     select_thread_in_use= 0;                    // Allow 'kill' to work
++
++    // EDG: bootstrap from file instead of stdin
++    if (opt_init_file)
++      return read_init_file(opt_init_file) ? EXIT_FAILURE : EXIT_SUCCESS;
++
+     int bootstrap_error= bootstrap(mysql_stdin);
+     if (!abort_loop)
+       unireg_abort(bootstrap_error);
 diff --git a/storage/rocksdb/CMakeLists.txt b/storage/rocksdb/CMakeLists.txt
 index c2fc8de8149..cff5ac101fa 100644
 --- a/storage/rocksdb/CMakeLists.txt

@@ -15,6 +15,11 @@ static void waitUntilStarted() {
 	extern volatile int mysqld_server_started;
 	waitUntilSet(&mysqld_server_started);
 }
+
+static void waitUntilListenInternalReady() {
+	extern int edgeless_listen_internal_ready;
+	waitUntilSet(&edgeless_listen_internal_ready);
+}
 */
 import "C"
 
@@ -27,4 +32,8 @@ func (mariadbd) Main(cnfPath string) int {
 
 func (mariadbd) WaitUntilStarted() {
 	C.waitUntilStarted()
+}
+
+func (mariadbd) WaitUntilListenInternalReady() {
+	C.waitUntilListenInternalReady()
 }
