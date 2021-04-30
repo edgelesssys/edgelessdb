@@ -7,30 +7,35 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"os"
 	"path/filepath"
+	"strings"
 
-	"github.com/go-sql-driver/mysql"
+	_ "github.com/go-sql-driver/mysql" // import driver used via the database/sql package
 )
 
 const (
-	filenameCA      = "ca.pem"
-	filenameCert    = "cert.pem"
-	filenameKey     = "key.pem"
-	filenameTidbcfg = "tidbcfg"
+	filenameCA   = "ca.pem"
+	filenameCert = "cert.pem"
+	filenameKey  = "key.pem"
+	filenameCnf  = "my.cnf"
+	filenameInit = "init.sql"
 )
 
 // Mariadbd is used to control mariadbd.
 type Mariadbd interface {
 	Main(cnfPath string) int
+	WaitUntilStarted()
 }
 
 // Mariadb is a secure database based on MariaDB.
 type Mariadb struct {
 	internalPath, externalPath       string
 	internalAddress, externalAddress string
+	certificateCommonName            string
 	mariadbd                         Mariadbd
 	log                              *log.Logger
 	cert                             []byte
@@ -41,59 +46,15 @@ type Mariadb struct {
 
 // NewMariadb creates a new Mariadb object.
 func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateCommonName string, mariadbd Mariadbd) (*Mariadb, error) {
-	d := &Mariadb{
-		internalPath:    internalPath,
-		externalPath:    externalPath,
-		internalAddress: internalAddress,
-		externalAddress: externalAddress,
-		mariadbd:        mariadbd,
-		log:             log.New(os.Stdout, "[EDB] ", log.LstdFlags),
-	}
-
-	// Start TiDB using internal sockets.
-	if err := d.configureInternal(); err != nil {
-		return nil, err
-	}
-	// d.launcher.Start()
-	// defer d.launcher.Stop()
-
-	cert, key, jsonManifest, err := getConfigFromSQL(d.internalAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	if cert == nil {
-		d.cert, d.key = createCertificate(certificateCommonName)
-		key, err := x509.MarshalPKCS8PrivateKey(d.key)
-		if err != nil {
-			return nil, err
-		}
-		if err := putCertToSQL(d.internalAddress, d.cert, key); err != nil {
-			return nil, err
-		}
-		return d, nil
-	}
-
-	d.cert = cert
-	d.key, err = x509.ParsePKCS8PrivateKey(key)
-	if err != nil {
-		return nil, err
-	}
-
-	if jsonManifest == nil {
-		// db has not been initialized yet
-		return d, nil
-	}
-
-	var man manifest
-	if err := json.Unmarshal(jsonManifest, &man); err != nil {
-		return nil, err
-	}
-
-	d.setManifestSignature(jsonManifest)
-	d.ca = man.CA
-
-	return d, nil
+	return &Mariadb{
+		internalPath:          internalPath,
+		externalPath:          externalPath,
+		internalAddress:       internalAddress,
+		externalAddress:       externalAddress,
+		certificateCommonName: certificateCommonName,
+		mariadbd:              mariadbd,
+		log:                   log.New(os.Stdout, "[EDB] ", log.LstdFlags),
+	}, nil
 }
 
 // GetCertificate gets the database certificate.
@@ -112,41 +73,65 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 		return err
 	}
 
-	if err := d.configureInternal(); err != nil {
+	if err := d.configureBootstrap(man.SQL, jsonManifest); err != nil {
 		return err
 	}
 
-	// For initial configuration, we start TiDB using internal sockets.
 	d.log.Println("initializing ...")
-	// d.launcher.Start()
-	err := execInitialSQL(man.SQL, d.internalAddress, jsonManifest)
-	// d.launcher.Stop()
-	if err != nil {
-		d.log.Println(err)
-		return err
+	if d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)) != 0 {
+		// unrecoverable
+		// TODO AB#882 pass concrete error to owner (might be an error in man.SQL)
+		// Note that there can be SQL errors even if Main returns 0
+		panic("bootstrap failed")
 	}
-	d.log.Println("DB is initialized.")
 
-	d.setManifestSignature(jsonManifest)
-	d.ca = man.CA
 	return nil
 }
 
 // Start starts the database.
 func (d *Mariadb) Start() error {
-	if d.manifestSig == nil {
+	_, err := os.Stat(filepath.Join(d.externalPath, "#rocksdb"))
+	if os.IsNotExist(err) {
+		d.cert, d.key = createCertificate(d.certificateCommonName)
 		d.log.Println("DB has not been initialized, waiting for manifest.")
 		return nil
 	}
-
-	// DB has been initialized, start it using external sockets.
-	if err := d.configureExternal(); err != nil {
+	if err != nil {
 		return err
 	}
-	d.log.Println("starting up ...")
-	// d.launcher.Start()
-	d.log.Println("DB is running.")
 
+	if err := d.configureStart(); err != nil {
+		return err
+	}
+
+	d.log.Println("starting up ...")
+	go func() {
+		ret := d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf))
+		panic(fmt.Errorf("mariadbd.Main returned unexpectedly with %v", ret))
+	}()
+
+	// TODO change mariadb such that it listens on an internal socket during startup
+
+	// errors are unrecoverable from here
+
+	cert, key, jsonManifest, err := getConfigFromSQL(d.internalAddress)
+	if err != nil {
+		d.log.Println("An intialization attempt failed. The DB is in an inconsistent state. Please provide an empty data directory")
+		d.log.Fatalln(err)
+	}
+
+	var man manifest
+	if err := json.Unmarshal(jsonManifest, &man); err != nil {
+		panic(err)
+	}
+
+	d.setManifestSignature(jsonManifest)
+	d.ca = man.CA
+	d.cert = cert
+	d.key = key
+
+	d.mariadbd.WaitUntilStarted()
+	d.log.Println("DB is running.")
 	return nil
 }
 
@@ -160,170 +145,87 @@ func (d *Mariadb) setManifestSignature(jsonManifest []byte) {
 	d.manifestSig = sig[:]
 }
 
-// configure MariaDB for internal socket without security
-func (d *Mariadb) configureInternal() error {
-	host, port := splitHostPort(d.internalAddress, "3306")
+// configure MariaDB for bootstrap
+func (d *Mariadb) configureBootstrap(sql []string, jsonManifest []byte) error {
+	var queries string
+	if len(sql) > 0 {
+		queries = strings.Join(sql, ";\n") + ";"
+	}
 
-	cfg := `
-path = "` + d.externalPath + `"
-host = "` + host + `"
-port = ` + port + `
-oom-use-tmp-storage = false
+	key, err := x509.MarshalPKCS8PrivateKey(d.key)
+	if err != nil {
+		return err
+	}
 
-[security]
-skip-grant-table = true
+	init := fmt.Sprintf(`
+%v
+CREATE DATABASE $edgeless;
+CREATE TABLE $edgeless.config (c BLOB, k BLOB, m BLOB);
+INSERT INTO $edgeless.config VALUES (%#x, %#x, %#x);
+`, queries, d.cert, key, jsonManifest)
 
-[log]
-level = "fatal"
-enable-slow-log = false
-
-[status]
-report-status = false
+	cnf := `
+[mysqld]
+datadir=` + d.externalPath + `
+default-storage-engine=ROCKSDB
+enforce-storage-engine=ROCKSDB
+bootstrap
+init-file=` + filepath.Join(d.internalPath, filenameInit) + `
 `
 
-	return ioutil.WriteFile(filepath.Join(d.internalPath, filenameTidbcfg), []byte(cfg), 0600)
+	if err := d.writeFile(filenameCnf, []byte(cnf)); err != nil {
+		return err
+	}
+	if err := d.writeFile(filenameInit, []byte(init)); err != nil {
+		return err
+	}
+	return nil
 }
 
-// configure MariaDB for external socket with security
-func (d *Mariadb) configureExternal() error {
-	pathCA := filepath.Join(d.internalPath, filenameCA)
-	pathCert := filepath.Join(d.internalPath, filenameCert)
-	pathKey := filepath.Join(d.internalPath, filenameKey)
-
+// configure MariaDB for regular start
+func (d *Mariadb) configureStart() error {
 	host, port := splitHostPort(d.externalAddress, "3306")
 
-	cfg := `
-path = "` + d.externalPath + `"
-host = "` + host + `"
-port = ` + port + `
-oom-use-tmp-storage = false
-
-[security]
-ssl-ca = "` + pathCA + `"
-ssl-cert = "` + pathCert + `"
-ssl-key = "` + pathKey + `"
-require-secure-transport = true
-
-[log]
-level = "fatal"
-enable-slow-log = false
-
-[status]
-report-status = false
+	cnf := `
+[mysqld]
+datadir=` + d.externalPath + `
+default-storage-engine=ROCKSDB
+enforce-storage-engine=ROCKSDB
+socket=
+bind-address=` + host + `
+port=` + port + `
+require-secure-transport=1
+ssl-ca = "` + filepath.Join(d.internalPath, filenameCA) + `"
+ssl-cert = "` + filepath.Join(d.internalPath, filenameCert) + `"
+ssl-key = "` + filepath.Join(d.internalPath, filenameKey) + `"
 `
 
-	pemCert, pemKey, err := toPEM(d.cert, d.key)
-	if err != nil {
-		return err
-	}
-
-	if err := ioutil.WriteFile(pathCA, []byte(d.ca), 0600); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(pathCert, pemCert, 0600); err != nil {
-		return err
-	}
-	if err := ioutil.WriteFile(pathKey, pemKey, 0600); err != nil {
-		return err
-	}
-	return ioutil.WriteFile(filepath.Join(d.internalPath, filenameTidbcfg), []byte(cfg), 0600)
+	return d.writeFile(filenameCnf, []byte(cnf))
 }
 
-func execInitialSQL(queries []string, address string, config []byte) error {
-	pw, err := generatePassword()
-	if err != nil {
-		return err
-	}
-
-	db, err := sqlOpen(address)
-	defer db.Close()
-	if err != nil {
-		return err
-	}
-
-	// DDL queries like CREATE TABLE implicitly commit a
-	// transaction so it makes no sense to use one here.
-
-	// Restrict root user to the internal address and set a random password. We don't need to
-	// save the password and will use skip-grant-table instead when we make internal connections.
-	host, _ := splitHostPort(address, "")
-	_, err = db.Exec("UPDATE mysql.user SET Host=?, authentication_string=PASSWORD(?) WHERE user='root'", host, pw)
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec("CREATE TABLE $edgeless.config (c BLOB)")
-	if err != nil {
-		if sqlerr, ok := err.(*mysql.MySQLError); ok && sqlerr.Number == 1050 { // ER_TABLE_EXISTS_ERROR
-			return errors.New("A previous intialization attempt failed. Please contact the DB administrator to reset the DB")
-		}
-		return err
-	}
-
-	for _, query := range queries {
-		_, err := db.Exec(query)
-		if err != nil {
-			return err
-		}
-	}
-
-	// Insert config last so that we know that initialization has been successful if config exists.
-	_, err = db.Exec("INSERT INTO $edgeless.config VALUES (?)", config)
-	return err
+func (d *Mariadb) writeFile(filename string, data []byte) error {
+	return ioutil.WriteFile(filepath.Join(d.internalPath, filename), data, 0600)
 }
 
-func getConfigFromSQL(address string) (cert, key, config []byte, err error) {
+func getConfigFromSQL(address string) (cert []byte, key crypto.PrivateKey, config []byte, err error) {
 	db, err := sqlOpen(address)
 	defer db.Close()
 	if err != nil {
 		return
 	}
 
-	err = db.QueryRow("SELECT * from $edgeless.cert").Scan(&cert, &key)
-	if err != nil && !sqlIsNoSuchTable(err) {
-		return
+	var keyRaw []byte
+	if err := db.QueryRow("SELECT * from $edgeless.config").Scan(&cert, &keyRaw, &config); err != nil {
+		return nil, nil, nil, err
 	}
 
-	err = db.QueryRow("SELECT c from $edgeless.config").Scan(&config)
-	if err == sql.ErrNoRows {
-		err = errors.New("An intialization attempt failed. The DB is in an inconsistent state. Please provide an empty data directory")
-	} else if err != nil && sqlIsNoSuchTable(err) {
-		err = nil
+	if key, err = x509.ParsePKCS8PrivateKey(keyRaw); err != nil {
+		return nil, nil, nil, err
 	}
 
 	return
 }
 
-func putCertToSQL(address string, cert, key []byte) error {
-	db, err := sqlOpen(address)
-	defer db.Close()
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec("CREATE DATABASE $edgeless")
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec("CREATE TABLE $edgeless.cert (c BLOB, k BLOB)")
-	if err != nil {
-		return err
-	}
-
-	_, err = db.Exec("INSERT INTO $edgeless.cert VALUES (?, ?)", cert, key)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func sqlOpen(address string) (*sql.DB, error) {
 	return sql.Open("mysql", "root@tcp("+address+")/")
-}
-
-func sqlIsNoSuchTable(err error) bool {
-	sqlerr, ok := err.(*mysql.MySQLError)
-	return ok && sqlerr.Number == 1146
 }

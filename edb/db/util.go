@@ -30,17 +30,6 @@ func splitHostPort(address, defaultPort string) (host, port string) {
 	return
 }
 
-func generatePassword() (string, error) {
-	var pw [30]byte
-	if _, err := rand.Read(pw[:]); err != nil {
-		return "", err
-	}
-	for i := range pw {
-		pw[i] = pw[i]%('z'-'0'+1) + '0'
-	}
-	return string(pw[:]), nil
-}
-
 func toPEM(cert []byte, key crypto.PrivateKey) (pemCert, pemKey []byte, err error) {
 	pemCert = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
 	if len(pemCert) <= 0 {
