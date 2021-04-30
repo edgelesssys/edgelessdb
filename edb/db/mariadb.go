@@ -12,12 +12,15 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
 
 	_ "github.com/go-sql-driver/mysql" // import driver used via the database/sql package
 )
+
+const edbInternalAddr = "EDB_INTERNAL_ADDR" // must be kept sync with src/mysqld_edb.cc
 
 const (
 	filenameCA   = "ca.pem"
@@ -31,6 +34,7 @@ const (
 type Mariadbd interface {
 	Main(cnfPath string) int
 	WaitUntilStarted()
+	WaitUntilListenInternalReady()
 }
 
 // Mariadb is a secure database based on MariaDB.
@@ -106,17 +110,23 @@ func (d *Mariadb) Start() error {
 		return err
 	}
 
+	// Set internal addr env var so that mariadb will first listen on that addr. SSL and ACL will not be active at this point,
+	// so we can get the cert and key from the db, write it to the memfs, and then let mariadb complete its startup sequence.
+	normalizedInternalAddr := net.JoinHostPort(splitHostPort(d.internalAddress, "3305"))
+	if err := os.Setenv(edbInternalAddr, normalizedInternalAddr); err != nil {
+		return err
+	}
+
 	d.log.Println("starting up ...")
 	go func() {
 		ret := d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf))
 		panic(fmt.Errorf("mariadbd.Main returned unexpectedly with %v", ret))
 	}()
-
-	// TODO change mariadb such that it listens on an internal socket during startup
+	d.mariadbd.WaitUntilListenInternalReady()
 
 	// errors are unrecoverable from here
 
-	cert, key, jsonManifest, err := getConfigFromSQL(d.internalAddress)
+	cert, key, jsonManifest, err := getConfigFromSQL(normalizedInternalAddr)
 	if err != nil {
 		d.log.Println("An intialization attempt failed. The DB is in an inconsistent state. Please provide an empty data directory")
 		d.log.Fatalln(err)
@@ -131,6 +141,20 @@ func (d *Mariadb) Start() error {
 	d.ca = man.CA
 	d.cert = cert
 	d.key = key
+
+	if err := d.writeCertificates(); err != nil {
+		panic(err)
+	}
+
+	// clear env var and connect once more to signal mariadb that we are ready to start
+	if err := os.Setenv(edbInternalAddr, ""); err != nil {
+		panic(err)
+	}
+	c, err := net.Dial("tcp", normalizedInternalAddr)
+	if err != nil {
+		panic(err)
+	}
+	c.Close()
 
 	d.mariadbd.WaitUntilStarted()
 	d.log.Println("DB is running.")
@@ -207,6 +231,23 @@ ssl-key = "` + filepath.Join(d.internalPath, filenameKey) + `"
 `
 
 	return d.writeFile(filenameCnf, []byte(cnf))
+}
+
+func (d *Mariadb) writeCertificates() error {
+	cert, key, err := toPEM(d.cert, d.key)
+	if err != nil {
+		return err
+	}
+	if err := d.writeFile(filenameCA, []byte(d.ca)); err != nil {
+		return err
+	}
+	if err := d.writeFile(filenameCert, cert); err != nil {
+		return err
+	}
+	if err := d.writeFile(filenameKey, key); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (d *Mariadb) writeFile(filename string, data []byte) error {
