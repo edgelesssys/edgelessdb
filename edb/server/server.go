@@ -4,6 +4,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,6 +12,17 @@ import (
 
 	"github.com/edgelesssys/edb/edb/core"
 )
+
+type generalResponse struct {
+	Status  string      `json:"status"`
+	Data    interface{} `json:"data"`
+	Message string      `json:"message,omitempty"` // only used when status = "error"
+}
+
+type certQuoteResp struct {
+	Cert  string
+	Quote []byte
+}
 
 // CreateServeMux creates a mux that serves the edb API.
 func CreateServeMux(core *core.Core) *http.ServeMux {
@@ -41,12 +53,12 @@ func CreateServeMux(core *core.Core) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/quote", func(w http.ResponseWriter, r *http.Request) {
-		report := core.GetReport()
-		if len(report) == 0 {
-			http.Error(w, "failed to get quote", http.StatusInternalServerError)
+		cert, report, err := core.GetCertificateReport()
+		if err != nil {
+			writeJSONError(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		w.Write(report)
+		writeJSON(w, certQuoteResp{cert, report})
 	})
 
 	return mux
@@ -61,4 +73,20 @@ func RunServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) {
 	}
 
 	fmt.Println(server.ListenAndServeTLS("", ""))
+}
+
+func writeJSON(w http.ResponseWriter, v interface{}) {
+	dataToReturn := generalResponse{Status: "success", Data: v}
+	if err := json.NewEncoder(w).Encode(dataToReturn); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func writeJSONError(w http.ResponseWriter, errorString string, httpErrorCode int) {
+	marshalledJSON, err := json.Marshal(generalResponse{Status: "error", Message: errorString})
+	// Only fall back to non-JSON error when we cannot even marshal the error (which is pretty bad)
+	if err != nil {
+		http.Error(w, errorString, httpErrorCode)
+	}
+	http.Error(w, string(marshalledJSON), httpErrorCode)
 }

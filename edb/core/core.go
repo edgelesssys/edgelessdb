@@ -41,9 +41,14 @@ func (c *Core) GetManifestSignature() []byte {
 	return c.db.GetManifestSignature()
 }
 
-// GetReport gets a report that includes the certificate's hash.
-func (c *Core) GetReport() []byte {
-	return c.report
+// GetCertificateReport gets the certificate and a report that includes the certificate's hash.
+func (c *Core) GetCertificateReport() (string, []byte, error) {
+	cert, _ := c.db.GetCertificate()
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
+	if len(pemCert) <= 0 {
+		return "", nil, errors.New("failed to encode certificate")
+	}
+	return string(pemCert), c.report, nil
 }
 
 // GetTLSConfig creates a TLS configuration that includes the certificate.
