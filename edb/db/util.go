@@ -50,7 +50,7 @@ func toPEM(cert []byte, key crypto.PrivateKey) (pemCert, pemKey []byte, err erro
 }
 
 func createCertificate(commonName string) ([]byte, crypto.PrivateKey) {
-	// TODO meaningful values
+	// TODO AB#875 cleanup
 	template := &x509.Certificate{
 		SerialNumber:          &big.Int{},
 		Subject:               pkix.Name{Organization: []string{"EDB root"}, CommonName: commonName},

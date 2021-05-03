@@ -185,7 +185,7 @@ func (c *Core) encryptRecoveryKey(cert string) ([]byte, error) {
 }
 
 func createCertificate(hostname string, ips []net.IP, signerCert []byte, signerKey crypto.PrivateKey) ([]byte, crypto.PrivateKey) {
-	// TODO meaningful values
+	// TODO AB#875 cleanup
 	template := &x509.Certificate{
 		SerialNumber: &big.Int{},
 		Subject:      pkix.Name{CommonName: hostname},
