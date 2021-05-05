@@ -224,7 +224,6 @@ func (d *Mariadb) configureStart() error {
 datadir=` + d.externalPath + `
 default-storage-engine=ROCKSDB
 enforce-storage-engine=ROCKSDB
-socket=
 bind-address=` + host + `
 port=` + port + `
 require-secure-transport=1
