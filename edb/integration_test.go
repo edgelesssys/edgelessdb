@@ -27,6 +27,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/edgelesssys/edb/edb/core"
 	"github.com/edgelesssys/era/era"
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
@@ -237,14 +238,8 @@ func TestCurl(t *testing.T) {
 	assert.Nil(exec.Command("curl", "--cacert", certFilename, "https://"+addrAPI+"/signature").Run())
 }
 
-type config struct {
-	DataPath        string
-	DatabaseAddress string
-	APIAddress      string
-}
-
 func createConfig() string {
-	cfg := config{DatabaseAddress: addrDB, APIAddress: addrAPI}
+	cfg := core.Config{DatabaseAddress: addrDB, APIAddress: addrAPI}
 	var err error
 	cfg.DataPath, err = ioutil.TempDir("", "")
 	if err != nil {
@@ -282,7 +277,7 @@ func cleanupConfig(filename string) {
 	if err != nil {
 		panic(err)
 	}
-	var cfg config
+	var cfg core.Config
 	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
 		panic(err)
 	}
