@@ -165,11 +165,40 @@ add_custom_command(TARGET emariadbd POST_BUILD
 # build edb-noenclave
 #
 
-add_custom_target(edblib go build -buildmode=c-archive ${CMAKE_SOURCE_DIR}/cmd/edb)
-add_executable(edb src/invokemain.cc)
-add_dependencies(edb edblib mariadb)
+add_custom_target(edb-noenclave-lib go build -buildmode=c-archive -o edb-noenclave.a ${CMAKE_SOURCE_DIR}/cmd/edb)
+add_executable(edb-noenclave src/invokemain.cc src/mysqld_main.cc)
+add_dependencies(edb-noenclave edb-noenclave-lib mariadb)
 
-target_link_libraries(edb
-  ${CMAKE_BINARY_DIR}/edb.a
+target_link_libraries(edb-noenclave
+  ${CMAKE_BINARY_DIR}/edb-noenclave.a
   -Wl,-Bstatic ${MARIADB_LIBS} -Wl,-Bdynamic
   ${MARIADB_LIBC})
+
+#
+# build edb
+#
+
+add_library(edb-lib src/emain.cc)
+target_link_libraries(edb-lib PRIVATE openenclave::oe_includes)
+
+add_custom_target(edb-golib ertgo build -buildmode=c-archive -tags enclave ${CMAKE_SOURCE_DIR}/cmd/edb)
+
+add_executable(edb-enclave src/mysqld_main.cc src/stubs.c)
+add_dependencies(edb-enclave edb-golib mariadb genkey)
+
+target_link_libraries(edb-enclave
+  openenclave::oeenclave
+  openenclave::ertcalls
+  edb-lib
+  openenclave::oehostepoll
+  openenclave::oehostfs
+  openenclave::oehostresolver
+  openenclave::oehostsock
+  ${CMAKE_BINARY_DIR}/edb.a
+  ${MARIADB_LIBS})
+
+add_custom_command(TARGET edb-enclave POST_BUILD
+  COMMAND openenclave::oesign sign -e $<TARGET_FILE:edb-enclave> -c
+          ${CMAKE_SOURCE_DIR}/src/enclave.conf -k private.pem)
+
+configure_file(src/edb edb COPYONLY)
