@@ -52,6 +52,9 @@ type Mariadb struct {
 
 // NewMariadb creates a new Mariadb object.
 func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateCommonName string, mariadbd Mariadbd) (*Mariadb, error) {
+	if err := os.MkdirAll(externalPath, 0700); err != nil {
+		return nil, err
+	}
 	return &Mariadb{
 		internalPath:          internalPath,
 		externalPath:          externalPath,
