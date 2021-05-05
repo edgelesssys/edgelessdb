@@ -1,55 +1,39 @@
+// +build !enclave
+
 package main
 
 import (
-	"encoding/json"
 	"errors"
-	"flag"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 
 	"github.com/edgelesssys/edb/edb/core"
-	"github.com/edgelesssys/edb/edb/db"
-	"github.com/edgelesssys/edb/edb/server"
 )
 
 func main() {
-	configFilename := flag.String("c", "", "")
-	flag.Parse()
-
-	cfg := struct {
-		DataPath        string
-		DatabaseAddress string
-		APIAddress      string
-	}{
-		"data",
-		"127.0.0.1",
-		"127.0.0.1:8080",
+	config := core.Config{
+		DataPath:              "data",
+		DatabaseAddress:       "127.0.0.1",
+		APIAddress:            "127.0.0.1:8080",
+		CertificateCommonName: "localhost",
 	}
 
-	if *configFilename != "" {
-		config, err := ioutil.ReadFile(*configFilename)
-		if err != nil || json.Unmarshal(config, &cfg) != nil {
-			panic("config")
-		}
-	}
-	cfg.DataPath, _ = filepath.Abs(cfg.DataPath)
-	os.MkdirAll(cfg.DataPath, 0700)
-
-	rt := runtime{}
-	internalPath, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(internalPath)
-	db, err := db.NewMariadb(internalPath, cfg.DataPath, "127.0.0.1", cfg.DatabaseAddress, "localhost", mariadbd{})
+	internalPath, err := ioutil.TempDir("", "")
 	if err != nil {
 		panic(err)
 	}
+	defer os.RemoveAll(internalPath)
 
-	core := core.NewCore(rt, db)
-	mux := server.CreateServeMux(core)
-	if err := core.StartDatabase(); err != nil {
+	run(config, internalPath, "127.0.0.1")
+}
+
+func hostPath(path string) string {
+	result, err := filepath.Abs(path)
+	if err != nil {
 		panic(err)
 	}
-	server.RunServer(mux, cfg.APIAddress, core.GetTLSConfig())
+	return result
 }
 
 type runtime struct{}

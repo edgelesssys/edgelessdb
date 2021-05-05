@@ -1,3 +1,5 @@
+// +build !enclave
+
 package main
 
 /*
