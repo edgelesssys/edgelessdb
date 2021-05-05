@@ -24,6 +24,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"syscall"
 	"testing"
 	"time"
 
@@ -288,6 +289,10 @@ func cleanupConfig(filename string) {
 
 func startEDB(configFilename string) *os.Process {
 	cmd := exec.Command(*exe, "-c", configFilename)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid:   true,            // group child with grandchildren so that we can kill 'em all
+		Pdeathsig: syscall.SIGKILL, // kill child if test dies
+	}
 	go func() {
 		if *showEdbOutput {
 			cmd.Stdout = os.Stdout
@@ -314,6 +319,7 @@ func startEDB(configFilename string) *os.Process {
 			if resp.StatusCode != http.StatusOK {
 				panic(resp.Status)
 			}
+			cmd.Process.Pid *= -1 // let the Process object refer to the child process group
 			return cmd.Process
 		}
 	}

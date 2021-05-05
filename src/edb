@@ -1,0 +1,3 @@
+#!/bin/bash
+DIR=$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")
+erthost "$DIR/edb-enclave.signed" "$@"
