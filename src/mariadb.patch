@@ -12,10 +12,10 @@ index 4fc324a9..fc4af0ee 100644
  CHECK_INCLUDE_FILES (wctype.h HAVE_WCTYPE_H)
  CHECK_INCLUDE_FILES (sys/sockio.h HAVE_SYS_SOCKIO_H)
 diff --git a/include/my_rdtsc.h b/include/my_rdtsc.h
-index 33d72276..9c73137f 100644
+index 33d72276..f27f457d 100644
 --- a/include/my_rdtsc.h
 +++ b/include/my_rdtsc.h
-@@ -23,19 +23,8 @@
+@@ -23,20 +23,6 @@
  #ifndef MY_RDTSC_H
  #define MY_RDTSC_H
  
@@ -32,12 +32,11 @@ index 33d72276..9c73137f 100644
 -# elif defined(HAVE_SYS_TIMES_H) && defined(HAVE_GETHRTIME)
 -#  include <sys/times.h>
 -# endif
-+// EDG: Reduce includes for out raw monotonic system timer
-+#include <sys/times.h>
- 
+-
  /**
    Characteristics of a timer.
-@@ -128,57 +117,11 @@ C_MODE_START
+ */
+@@ -128,57 +114,9 @@ C_MODE_START
  */
  static inline ulonglong my_timer_cycles(void)
  {
@@ -90,17 +89,14 @@ index 33d72276..9c73137f 100644
 -  /* gethrtime may appear as either cycle or nanosecond counter */
 -  return (ulonglong) gethrtime();
 -#else
--  return 0;
--#endif
 +  // EDG: RDTSC is not supported on SGX1, only on SGX2. So we fall back to
-+  // the raw monotonic system clock here.
-+  struct timespec tp;
-+  clock_gettime(CLOCK_MONOTONIC_RAW, &tp);
-+  return (ulonglong) tp.tv_sec * 1000000000 + (ulonglong) tp.tv_nsec;
++  // the next timer here.
+   return 0;
+-#endif
  }
  
  /**
-@@ -233,4 +176,3 @@ C_MODE_END
+@@ -233,4 +171,3 @@ C_MODE_END
  #define MY_TIMER_ROUTINE_AARCH64                 29
  
  #endif
