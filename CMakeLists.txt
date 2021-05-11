@@ -179,12 +179,21 @@ target_link_libraries(edb-noenclave
 # build edb
 #
 
+# We want to override OPENSSL_rdtsc in libcrypto. To avoid multiple definition errors, we extract the
+# obj containing the original function, rename the symbol, and link the obj before linking libcrypto.
+add_custom_command(OUTPUT x86_64cpuid.o
+  DEPENDS /usr/lib/x86_64-linux-gnu/libcrypto.a
+  COMMAND ar x /usr/lib/x86_64-linux-gnu/libcrypto.a x86_64cpuid.o)
+add_custom_command(OUTPUT x86_64cpuid_.o
+  DEPENDS x86_64cpuid.o
+  COMMAND bbe -e 's/OPENSSL_rdtsc/OPENSSL_rdtsC/' x86_64cpuid.o > x86_64cpuid_.o)
+
 add_library(edb-lib src/emain.cc)
 target_link_libraries(edb-lib PRIVATE openenclave::oe_includes)
 
 add_custom_target(edb-golib ertgo build -buildmode=c-archive -tags enclave ${CMAKE_SOURCE_DIR}/cmd/edb)
 
-add_executable(edb-enclave src/mysqld_main.cc src/stubs.c)
+add_executable(edb-enclave src/mysqld_main.cc src/stubs.c x86_64cpuid_.o)
 add_dependencies(edb-enclave edb-golib mariadb genkey)
 
 target_link_libraries(edb-enclave
