@@ -82,6 +82,7 @@ ExternalProject_Add(mariadb
     -DPLUGIN_TYPE_TEST=NO
     -DPLUGIN_USER_VARIABLES=NO
     -DPLUGIN_WSREP_INFO=NO
+    -DWITH_PCRE=bundled
   BUILD_COMMAND make -j ${NPROC} mariadbd my_print_defaults resolveip
   INSTALL_COMMAND "")
 
