@@ -12,95 +12,21 @@ index 4fc324a9..fc4af0ee 100644
  CHECK_INCLUDE_FILES (wctype.h HAVE_WCTYPE_H)
  CHECK_INCLUDE_FILES (sys/sockio.h HAVE_SYS_SOCKIO_H)
 diff --git a/include/my_rdtsc.h b/include/my_rdtsc.h
-index 33d72276..f27f457d 100644
+index 33d72276..b120d392 100644
 --- a/include/my_rdtsc.h
 +++ b/include/my_rdtsc.h
-@@ -23,20 +23,6 @@
- #ifndef MY_RDTSC_H
- #define MY_RDTSC_H
- 
--# ifndef __has_builtin
--#  define __has_builtin(x) 0 /* Compatibility with non-clang compilers */
--# endif
--# if __has_builtin(__builtin_readcyclecounter)
--# elif defined _WIN32
--#  include <intrin.h>
--# elif defined __i386__ || defined __x86_64__
--#  include <x86intrin.h>
--# elif defined(__INTEL_COMPILER) && defined(__ia64__) && defined(HAVE_IA64INTRIN_H)
--#  include <ia64intrin.h>
--# elif defined(HAVE_SYS_TIMES_H) && defined(HAVE_GETHRTIME)
--#  include <sys/times.h>
--# endif
--
- /**
-   Characteristics of a timer.
- */
-@@ -128,57 +114,9 @@ C_MODE_START
+@@ -128,7 +128,10 @@ C_MODE_START
  */
  static inline ulonglong my_timer_cycles(void)
  {
 -# if __has_builtin(__builtin_readcyclecounter) && !defined (__aarch64__)
--  return __builtin_readcyclecounter();
--# elif defined _WIN32 || defined __i386__ || defined __x86_64__
--  return __rdtsc();
--# elif defined(__INTEL_COMPILER) && defined(__ia64__) && defined(HAVE_IA64INTRIN_H)
--  return (ulonglong) __getReg(_IA64_REG_AR_ITC); /* (3116) */
--#elif defined(__GNUC__) && defined(__ia64__)
--  {
--    ulonglong result;
--    __asm __volatile__ ("mov %0=ar.itc" : "=r" (result));
--    return result;
--  }
--#elif defined __GNUC__ && defined __powerpc__
--  return __builtin_ppc_get_timebase();
--#elif defined(__GNUC__) && defined(__sparcv9) && defined(_LP64)
--  {
--    ulonglong result;
--    __asm __volatile__ ("rd %%tick,%0" : "=r" (result));
--    return result;
--  }
--#elif defined(__GNUC__) && defined(__sparc__) && !defined(_LP64)
--  {
--      union {
--              ulonglong wholeresult;
--              struct {
--                      ulong high;
--                      ulong low;
--              }       splitresult;
--      } result;
--    __asm __volatile__ ("rd %%tick,%1; srlx %1,32,%0" : "=r" (result.splitresult.high), "=r" (result.splitresult.low));
--    return result.wholeresult;
--  }
--#elif defined(__GNUC__) && defined(__s390__)
--  /* covers both s390 and s390x */
--  {
--    ulonglong result;
--    __asm__ __volatile__ ("stck %0" : "=Q" (result) : : "cc");
--    return result;
--  }
--#elif defined(__GNUC__) && defined (__aarch64__)
--  {
--    ulonglong result;
--    __asm __volatile("mrs	%0, CNTVCT_EL0" : "=&r" (result));
--    return result;
--  }
--#elif defined(HAVE_SYS_TIMES_H) && defined(HAVE_GETHRTIME)
--  /* gethrtime may appear as either cycle or nanosecond counter */
--  return (ulonglong) gethrtime();
--#else
-+  // EDG: RDTSC is not supported on SGX1, only on SGX2. So we fall back to
-+  // the next timer here.
-   return 0;
--#endif
- }
- 
- /**
-@@ -233,4 +171,3 @@ C_MODE_END
- #define MY_TIMER_ROUTINE_AARCH64                 29
- 
- #endif
--
++  // EDG: RDTSC is not supported on SGX1. So we fall back to the next timer here.
++#if 1
++  return 0;
++#elif 0
+   return __builtin_readcyclecounter();
+ # elif defined _WIN32 || defined __i386__ || defined __x86_64__
+   return __rdtsc();
 diff --git a/mysys/mysys_priv.h b/mysys/mysys_priv.h
 index adf2d390..e4bef729 100644
 --- a/mysys/mysys_priv.h
