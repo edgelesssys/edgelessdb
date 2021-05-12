@@ -72,3 +72,7 @@ ert_args_t ert_get_args() {
   result.envp = env;
   return result;
 }
+
+extern "C" int OPENSSL_rdtsc() {
+  return 0;  // not available
+}

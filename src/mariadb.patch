@@ -11,6 +11,22 @@ index 4fc324a9..fc4af0ee 100644
  CHECK_INCLUDE_FILES (wchar.h HAVE_WCHAR_H)
  CHECK_INCLUDE_FILES (wctype.h HAVE_WCTYPE_H)
  CHECK_INCLUDE_FILES (sys/sockio.h HAVE_SYS_SOCKIO_H)
+diff --git a/include/my_rdtsc.h b/include/my_rdtsc.h
+index 33d72276..b120d392 100644
+--- a/include/my_rdtsc.h
++++ b/include/my_rdtsc.h
+@@ -128,7 +128,10 @@ C_MODE_START
+ */
+ static inline ulonglong my_timer_cycles(void)
+ {
+-# if __has_builtin(__builtin_readcyclecounter) && !defined (__aarch64__)
++  // EDG: RDTSC is not supported on SGX1. So we fall back to the next timer here.
++#if 1
++  return 0;
++#elif 0
+   return __builtin_readcyclecounter();
+ # elif defined _WIN32 || defined __i386__ || defined __x86_64__
+   return __rdtsc();
 diff --git a/mysys/mysys_priv.h b/mysys/mysys_priv.h
 index adf2d390..e4bef729 100644
 --- a/mysys/mysys_priv.h
