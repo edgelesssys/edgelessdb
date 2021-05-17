@@ -55,6 +55,7 @@ func createCertificate(commonName string) ([]byte, crypto.PrivateKey) {
 		SerialNumber:          &big.Int{},
 		Subject:               pkix.Name{Organization: []string{"EDB root"}, CommonName: commonName},
 		NotAfter:              time.Now().AddDate(10, 0, 0),
+		DNSNames:              []string{commonName},
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
