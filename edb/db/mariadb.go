@@ -227,6 +227,7 @@ enforce-storage-engine=ROCKSDB
 user=root
 bind-address=` + host + `
 port=` + port + `
+skip-name-resolve
 require-secure-transport=1
 ssl-ca = "` + filepath.Join(d.internalPath, filenameCA) + `"
 ssl-cert = "` + filepath.Join(d.internalPath, filenameCert) + `"
