@@ -258,10 +258,10 @@ func (d *Mariadb) writeFile(filename string, data []byte) error {
 
 func getConfigFromSQL(address string) (cert []byte, key crypto.PrivateKey, config []byte, err error) {
 	db, err := sqlOpen(address)
-	defer db.Close()
 	if err != nil {
 		return
 	}
+	defer db.Close()
 
 	var keyRaw []byte
 	if err := db.QueryRow("SELECT * from $edgeless.config").Scan(&cert, &keyRaw, &config); err != nil {
