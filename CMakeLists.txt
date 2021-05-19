@@ -166,7 +166,9 @@ add_custom_command(TARGET emariadbd POST_BUILD
 # build edb-noenclave
 #
 
-add_custom_target(edb-noenclave-lib go build -buildmode=c-archive -o edb-noenclave.a ${CMAKE_SOURCE_DIR}/cmd/edb)
+add_custom_target(edb-noenclave-lib
+  go build -buildmode=c-archive -o ${CMAKE_BINARY_DIR}/edb-noenclave.a
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/edb)
 add_executable(edb-noenclave src/invokemain.cc src/mysqld_main.cc)
 add_dependencies(edb-noenclave edb-noenclave-lib mariadb)
 
@@ -191,7 +193,9 @@ add_custom_command(OUTPUT x86_64cpuid_.o
 add_library(edb-lib src/emain.cc)
 target_link_libraries(edb-lib PRIVATE openenclave::oe_includes)
 
-add_custom_target(edb-golib ertgo build -buildmode=c-archive -tags enclave ${CMAKE_SOURCE_DIR}/cmd/edb)
+add_custom_target(edb-golib
+  ertgo build -buildmode=c-archive -tags enclave -o ${CMAKE_BINARY_DIR}
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/edb)
 
 add_executable(edb-enclave src/mysqld_main.cc src/stubs.c x86_64cpuid_.o)
 add_dependencies(edb-enclave edb-golib mariadb genkey)
