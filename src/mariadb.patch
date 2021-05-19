@@ -1,8 +1,8 @@
 diff --git a/configure.cmake b/configure.cmake
-index 4fc324a9..fc4af0ee 100644
+index 8383b6921f8..419881099ba 100644
 --- a/configure.cmake
 +++ b/configure.cmake
-@@ -246,7 +246,7 @@ CHECK_INCLUDE_FILES (sys/param.h HAVE_SYS_PARAM_H)
+@@ -247,7 +247,7 @@ CHECK_INCLUDE_FILES (sys/param.h HAVE_SYS_PARAM_H)
  CHECK_INCLUDE_FILES (sys/vadvise.h HAVE_SYS_VADVISE_H)
  CHECK_INCLUDE_FILES (fnmatch.h HAVE_FNMATCH_H)
  CHECK_INCLUDE_FILES (stdarg.h  HAVE_STDARG_H)
@@ -12,7 +12,7 @@ index 4fc324a9..fc4af0ee 100644
  CHECK_INCLUDE_FILES (wctype.h HAVE_WCTYPE_H)
  CHECK_INCLUDE_FILES (sys/sockio.h HAVE_SYS_SOCKIO_H)
 diff --git a/include/my_rdtsc.h b/include/my_rdtsc.h
-index 33d72276..b120d392 100644
+index 33d722764d4..b120d3920c0 100644
 --- a/include/my_rdtsc.h
 +++ b/include/my_rdtsc.h
 @@ -128,7 +128,10 @@ C_MODE_START
@@ -28,7 +28,7 @@ index 33d72276..b120d392 100644
  # elif defined _WIN32 || defined __i386__ || defined __x86_64__
    return __rdtsc();
 diff --git a/mysys/mysys_priv.h b/mysys/mysys_priv.h
-index adf2d390..e4bef729 100644
+index adf2d39046a..e4bef7296e3 100644
 --- a/mysys/mysys_priv.h
 +++ b/mysys/mysys_priv.h
 @@ -144,7 +144,10 @@ void my_error_unregister_all(void);
@@ -44,7 +44,7 @@ index adf2d390..e4bef729 100644
  const char *my_open_parent_dir_nosymlinks(const char *pathname, int *pdfd);
  #define NOSYMLINK_FUNCTION_BODY(AT,NOAT)                                \
 diff --git a/sql/CMakeLists.txt b/sql/CMakeLists.txt
-index b9cd418f..b680ffe0 100644
+index bff01ca817e..1936544e22c 100644
 --- a/sql/CMakeLists.txt
 +++ b/sql/CMakeLists.txt
 @@ -195,7 +195,7 @@ RECOMPILE_FOR_EMBEDDED)
@@ -57,10 +57,10 @@ index b9cd418f..b680ffe0 100644
  DTRACE_INSTRUMENT(sql)
  TARGET_LINK_LIBRARIES(sql
 diff --git a/sql/mysqld.cc b/sql/mysqld.cc
-index 48a09d15..02e27aff 100644
+index 29aaf389ca1..37cd48ee4fc 100644
 --- a/sql/mysqld.cc
 +++ b/sql/mysqld.cc
-@@ -5483,7 +5483,6 @@ int mysqld_main(int argc, char **argv)
+@@ -5478,7 +5478,6 @@ int mysqld_main(int argc, char **argv)
    if (init_server_components())
      unireg_abort(1);
  
@@ -68,7 +68,7 @@ index 48a09d15..02e27aff 100644
    network_init();
  
  #ifdef _WIN32
-@@ -5510,14 +5509,27 @@ int mysqld_main(int argc, char **argv)
+@@ -5505,14 +5504,27 @@ int mysqld_main(int argc, char **argv)
      init signals & alarm
      After this we can't quit by a simple unireg_abort
    */
@@ -98,7 +98,7 @@ index 48a09d15..02e27aff 100644
  
    udf_init();
  
-@@ -5573,6 +5585,11 @@ int mysqld_main(int argc, char **argv)
+@@ -5568,6 +5580,11 @@ int mysqld_main(int argc, char **argv)
    if (opt_bootstrap)
    {
      select_thread_in_use= 0;                    // Allow 'kill' to work
@@ -111,7 +111,7 @@ index 48a09d15..02e27aff 100644
      if (!abort_loop)
        unireg_abort(bootstrap_error);
 diff --git a/storage/rocksdb/CMakeLists.txt b/storage/rocksdb/CMakeLists.txt
-index c2fc8de8..cff5ac10 100644
+index c2fc8de8149..cff5ac101fa 100644
 --- a/storage/rocksdb/CMakeLists.txt
 +++ b/storage/rocksdb/CMakeLists.txt
 @@ -121,12 +121,12 @@ else()
