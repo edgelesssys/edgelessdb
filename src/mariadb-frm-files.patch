@@ -883,7 +883,7 @@ index 05b5341bfb1..4efb836cced 100644
  }  // namespace myrocks
  
 diff --git a/storage/rocksdb/rdb_datadic.cc b/storage/rocksdb/rdb_datadic.cc
-index 5f46fd8acad..72cb787fb73 100644
+index 5f46fd8acad..c928ca09f58 100644
 --- a/storage/rocksdb/rdb_datadic.cc
 +++ b/storage/rocksdb/rdb_datadic.cc
 @@ -3834,31 +3834,16 @@ bool Rdb_validate_tbls::check_frm_file(const std::string &fullpath,
@@ -933,7 +933,49 @@ index 5f46fd8acad..72cb787fb73 100644
    return result;
  }
  
-@@ -3987,7 +3969,8 @@ bool Rdb_ddl_manager::validate_auto_incr() {
+@@ -3884,35 +3866,20 @@ bool Rdb_validate_tbls::scan_for_frms(const std::string &datadir,
+ */
+ bool Rdb_validate_tbls::compare_to_actual_tables(const std::string &datadir,
+                                                  bool *has_errors) {
++  std::vector<std::string> dbnames;
+   bool result = true;
+-  struct st_my_dir *dir_info;
+-  struct fileinfo *file_info;
+ 
+-  dir_info = my_dir(datadir.c_str(), MYF(MY_DONT_SORT | MY_WANT_STAT));
+-  if (dir_info == nullptr) {
+-    // NO_LINT_DEBUG
+-    sql_print_warning("RocksDB: could not open datadir: %s", datadir.c_str());
+-    return false;
+-  }
+-
+-  file_info = dir_info->dir_entry;
+-  for (uint ii = 0; ii < dir_info->number_of_files; ii++, file_info++) {
+-    /* Ignore files/dirs starting with '.' */
+-    if (file_info->name[0] == '.') continue;
+-
+-    /* Ignore all non-directory files */
+-    if (!MY_S_ISDIR(file_info->mystat->st_mode)) continue;
++  // We are modifying the m_list in scan_for_frms -> get the keys first
++  for(auto const& imap: m_list)
++      dbnames.push_back(imap.first);
+ 
++  for (auto &db: dbnames) {
+     /* Scan all the .frm files in the directory */
+-    if (!scan_for_frms(datadir, file_info->name, has_errors)) {
++    if (!scan_for_frms(datadir, db, has_errors)) {
+       result = false;
+       break;
+     }
+   }
+-
+-  /* Release the directory info */
+-  my_dirend(dir_info);
+-
+   return result;
+ }
+ 
+@@ -3987,7 +3954,8 @@ bool Rdb_ddl_manager::validate_auto_incr() {
  */
  bool Rdb_ddl_manager::validate_schemas(void) {
    bool has_errors = false;
