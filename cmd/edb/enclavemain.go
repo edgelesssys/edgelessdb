@@ -22,9 +22,7 @@ func main() {
 		panic(err)
 	}
 
-	//TODO AB#906
-	//run(config, internalPath, "255.0.0.1")
-	run(config, internalPath, "127.0.0.1")
+	run(config, internalPath, "255.0.0.1")
 }
 
 func hostPath(path string) string {
