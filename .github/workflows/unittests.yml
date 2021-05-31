@@ -9,12 +9,29 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/edgelesssys/edgelessrt-dev:nightly
     steps:
       - name: Check out code
         uses: actions/checkout@v2
 
       - name: Test
         run: go test ./...
+
+      - name: Setup Build Environment
+        run: |
+          mkdir build
+          apt update
+          apt install -y libncurses5-dev libcurl4-openssl-dev bison liblz4-dev bbe
+
+      - name: Build
+        run: |
+          cmake ..
+          make -j`nproc`
+        working-directory: build
+
+      - name: Integration Test
+        run: go test -v -tags integration ./edb -e ../build/edb
 
       # - name: Deploy emariadb:nightly
       #   if: github.ref == 'refs/heads/main' &&
