@@ -21,8 +21,8 @@ jobs:
       - name: Setup Build Environment
         run: |
           mkdir build
-          apt update
-          apt install -y libncurses5-dev libcurl4-openssl-dev bison liblz4-dev bbe
+          apt-get update
+          apt-get install -y libncurses5-dev libcurl4-openssl-dev bison liblz4-dev bbe
 
       - name: Build
         run: |
@@ -31,7 +31,7 @@ jobs:
         working-directory: build
 
       - name: Integration Test
-        run: go test -v -tags integration ./edb -e ../build/edb
+        run: OE_SIMULATION=1 go test -v -tags integration ./edb -e ../build/edb
 
       # - name: Deploy emariadb:nightly
       #   if: github.ref == 'refs/heads/main' &&
