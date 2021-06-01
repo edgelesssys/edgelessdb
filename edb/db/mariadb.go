@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 
 	_ "github.com/go-sql-driver/mysql" // import driver used via the database/sql package
 )
@@ -87,6 +88,19 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	}
 
 	d.log.Println("initializing ...")
+
+	// Remove already existing log file, as we do not want replayed logs
+	err := os.Remove("/edg/hostfs/tmp/mariadb-error.log")
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// Save original stdout and print it after execution
+	// MariaDB will hijack it for error logging
+	oldStdout, _ := syscall.Dup(syscall.Stdout)
+	defer printErrorLog(oldStdout)
+
+	// Launch MariaDB
 	if d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)) != 0 {
 		// unrecoverable
 		// TODO AB#882 pass concrete error to owner (might be an error in man.SQL)
@@ -202,6 +216,7 @@ INSERT INTO $edgeless.config VALUES (%#x, %#x, %#x);
 datadir=` + d.externalPath + `
 default-storage-engine=ROCKSDB
 enforce-storage-engine=ROCKSDB
+log-error = /edg/hostfs/tmp/mariadb-error.log
 bootstrap
 init-file=` + filepath.Join(d.internalPath, filenameInit) + `
 `
@@ -278,4 +293,16 @@ func getConfigFromSQL(address string) (cert []byte, key crypto.PrivateKey, confi
 
 func sqlOpen(address string) (*sql.DB, error) {
 	return sql.Open("mysql", "root@tcp("+address+")/")
+}
+
+func printErrorLog(stdoutFd int) {
+	// Restore original stdout from MariaDB's control
+	syscall.Dup2(stdoutFd, syscall.Stdout)
+
+	errorLog, err := ioutil.ReadFile("/edg/hostfs/tmp/mariadb-error.log")
+	if err != nil {
+		log.Println("ERROR: cannot read error log:", err)
+	} else {
+		fmt.Print(string(errorLog))
+	}
 }
