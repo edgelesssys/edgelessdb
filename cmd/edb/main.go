@@ -4,6 +4,7 @@ package main
 
 import (
 	"errors"
+	"flag"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -12,6 +13,9 @@ import (
 )
 
 func main() {
+	configFilename := flag.String("c", "", "config file")
+	flag.Parse()
+
 	config := core.Config{
 		DataPath:              "data",
 		DatabaseAddress:       "127.0.0.1",
@@ -19,11 +23,21 @@ func main() {
 		CertificateCommonName: "localhost",
 	}
 
+	if *configFilename != "" {
+		var err error
+		config, err = core.ReadConfig(hostPath(*configFilename), config)
+		if err != nil {
+			panic(err)
+		}
+	}
+
 	internalPath, err := ioutil.TempDir("", "")
 	if err != nil {
 		panic(err)
 	}
 	defer os.RemoveAll(internalPath)
+
+	config.DataPath = hostPath(config.DataPath)
 
 	run(config, internalPath, "127.0.0.1")
 }

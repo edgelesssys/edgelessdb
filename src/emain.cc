@@ -1,5 +1,6 @@
 #include <openenclave/ert.h>
 #include <sys/mount.h>
+#include <sys/stat.h>
 
 #include <cassert>
 #include <cstdlib>
@@ -22,12 +23,36 @@ int emain() {
     return EXIT_FAILURE;
   }
 
+  // Preparing memfs
   const Memfs memfs(kMemfsName);
-  if (mount("/", "/tmp", kMemfsName, 0, nullptr) != 0) {
+  if (mount("/", "/memfs", kMemfsName, 0, nullptr) != 0) {
+    cout << "mount memfs failed\n";
+    return EXIT_FAILURE;
+  }
+  if (mkdir("/memfs/tmp", 0777) == -1) {
+    cout << "creating directory '/memfs/tmp' failed: " << strerror(errno) << endl;
+    return EXIT_FAILURE;
+  }
+  if (mkdir("/memfs/data", 0777) == -1) {
+    cout << "creating directory '/memfs/data' failed: " << strerror(errno) << endl;
+    return EXIT_FAILURE;
+  }
+  if (umount("/memfs") != 0) {
+    cout << "umount memfs failed\n";
+    return EXIT_FAILURE;
+  }
+
+  // Mounting memfs for /tmp and /data
+  if (mount("/tmp", "/tmp", kMemfsName, 0, nullptr) != 0) {
+    cout << "mount memfs failed\n";
+    return EXIT_FAILURE;
+  }
+  if (mount("/data", "/data", kMemfsName, 0, nullptr) != 0) {
     cout << "mount memfs failed\n";
     return EXIT_FAILURE;
   }
 
+  // Mounting hostfs for access to config file
   if (mount("/", "/edg/hostfs", OE_HOST_FILE_SYSTEM, 0, nullptr) != 0) {
     cout << "mount hostfs failed\n";
     return EXIT_FAILURE;
