@@ -1,3 +1,6 @@
-[submodule "server"]
-	path = server
-	url = https://github.com/MariaDB/server.git
+[submodule "3rdparty/mariadb"]
+	path = 3rdparty/mariadb
+	url = https://github.com/MariaDB/server
+[submodule "3rdparty/edgeless-rocksdb"]
+	path = 3rdparty/edgeless-rocksdb
+	url = https://github.com/edgelesssys/erocksdb
