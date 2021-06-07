@@ -90,7 +90,7 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	d.log.Println("initializing ...")
 
 	// Remove already existing log file, as we do not want replayed logs
-	err := os.Remove("/edg/hostfs/tmp/mariadb-error.log")
+	err := os.Remove("/tmp/mariadb-error.log")
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -217,7 +217,7 @@ INSERT INTO $edgeless.config VALUES (%#x, %#x, %#x);
 datadir=` + d.externalPath + `
 default-storage-engine=ROCKSDB
 enforce-storage-engine=ROCKSDB
-log-error = /edg/hostfs/tmp/mariadb-error.log
+log-error = /tmp/mariadb-error.log
 bootstrap
 init-file=` + filepath.Join(d.internalPath, filenameInit) + `
 `
@@ -301,7 +301,7 @@ func printErrorLog(stdoutFd int, stderrFd int) {
 	syscall.Dup2(stdoutFd, syscall.Stdout)
 	syscall.Dup2(stderrFd, syscall.Stderr)
 
-	errorLog, err := ioutil.ReadFile("/edg/hostfs/tmp/mariadb-error.log")
+	errorLog, err := ioutil.ReadFile("/tmp/mariadb-error.log")
 	if err != nil {
 		log.Println("ERROR: cannot read error log:", err)
 	} else {
