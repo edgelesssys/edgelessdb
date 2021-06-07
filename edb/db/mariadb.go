@@ -95,10 +95,11 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 		return err
 	}
 
-	// Save original stdout and print it after execution
-	// MariaDB will hijack it for error logging
-	oldStdout, _ := syscall.Dup(syscall.Stdout)
-	defer printErrorLog(oldStdout)
+	// Save original stdout & stderr and print it after execution
+	// MariaDB will hijack it and forward it to its error log
+	origStdout, _ := syscall.Dup(syscall.Stdout)
+	origStderr, _ := syscall.Dup(syscall.Stderr)
+	defer printErrorLog(origStdout, origStderr)
 
 	// Launch MariaDB
 	if d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)) != 0 {
@@ -295,9 +296,10 @@ func sqlOpen(address string) (*sql.DB, error) {
 	return sql.Open("mysql", "root@tcp("+address+")/")
 }
 
-func printErrorLog(stdoutFd int) {
-	// Restore original stdout from MariaDB's control
+func printErrorLog(stdoutFd int, stderrFd int) {
+	// Restore original stdout & stderr from MariaDB's redirection
 	syscall.Dup2(stdoutFd, syscall.Stdout)
+	syscall.Dup2(stderrFd, syscall.Stderr)
 
 	errorLog, err := ioutil.ReadFile("/edg/hostfs/tmp/mariadb-error.log")
 	if err != nil {
