@@ -15,6 +15,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"syscall"
 
@@ -99,17 +100,15 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	// MariaDB will hijack it and forward it to its error log
 	origStdout, _ := syscall.Dup(syscall.Stdout)
 	origStderr, _ := syscall.Dup(syscall.Stderr)
-	defer printErrorLog(origStdout, origStderr)
 
 	// Launch MariaDB
-	if d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)) != 0 {
-		// unrecoverable
-		// TODO AB#882 pass concrete error to owner (might be an error in man.SQL)
-		// Note that there can be SQL errors even if Main returns 0
+	if err := d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)); err != 0 {
+		printErrorLog(origStdout, origStderr, false)
+		d.log.Printf("FATAL: bootstrap failed, MariaDB exited with error code: %d\n", err)
 		panic("bootstrap failed")
 	}
 
-	return nil
+	return printErrorLog(origStdout, origStderr, true)
 }
 
 // Start starts the database.
@@ -296,15 +295,44 @@ func sqlOpen(address string) (*sql.DB, error) {
 	return sql.Open("mysql", "root@tcp("+address+")/")
 }
 
-func printErrorLog(stdoutFd int, stderrFd int) {
+func printErrorLog(stdoutFd int, stderrFd int, onlyPrintOnError bool) error {
 	// Restore original stdout & stderr from MariaDB's redirection
-	syscall.Dup2(stdoutFd, syscall.Stdout)
-	syscall.Dup2(stderrFd, syscall.Stderr)
+	if err := syscall.Dup2(stdoutFd, syscall.Stdout); err != nil {
+		panic("cannot restore stdout from MariaDB's redirection, aborting")
+	}
+	if err := syscall.Dup2(stderrFd, syscall.Stderr); err != nil {
+		panic("cannot restore stderr from MariaDB's redirection, aborting")
+	}
 
+	// Read error log from internal memfs
+	// This file should always be created when everything is somewhat running okay
+	// Even when silent startup is set and nothing was printed to the error log
 	errorLog, err := ioutil.ReadFile("/tmp/mariadb-error.log")
 	if err != nil {
 		log.Println("ERROR: cannot read error log:", err)
-	} else {
-		fmt.Print(string(errorLog))
+		return err
 	}
+
+	if !onlyPrintOnError {
+		// Always print the full error log
+		// Useful when MariaDB exists with an error code, as something might have gone wrong internally.
+
+		fmt.Print(string(errorLog))
+	} else {
+		// Check if "ERROR" (case insensitive) occurs in log, and if it does, print the error.
+		// Useful to check for SQL query errors during bootstrapping
+		foundError, err := regexp.Match(`(?mi)^ERROR.*$`, errorLog)
+
+		if err != nil {
+			return err
+		}
+
+		// If an error was found, print the error log
+		if foundError {
+			fmt.Print(string(errorLog))
+			return errors.New("an error occured during MariaDB bootstrapping")
+		}
+	}
+
+	return nil
 }
