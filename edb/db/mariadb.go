@@ -313,25 +313,20 @@ func printErrorLog(stdoutFd int, stderrFd int, onlyPrintOnError bool) error {
 		return err
 	}
 
-	if !onlyPrintOnError {
-		// Always print the full error log
-		// Useful when MariaDB exists with an error code, as something might have gone wrong internally.
+	// Check if "ERROR" (case insensitive) occurs in MariaDB's error log
+	foundError, err := regexp.Match(`(?mi)^ERROR.*$`, errorLog)
+	if err != nil {
+		return err
+	}
 
+	// Print error log if an error was found or we explicitly asked for the log
+	if foundError || !onlyPrintOnError {
 		fmt.Print(string(errorLog))
-	} else {
-		// Check if "ERROR" (case insensitive) occurs in log, and if it does, print the error.
-		// Useful to check for SQL query errors during bootstrapping
-		foundError, err := regexp.Match(`(?mi)^ERROR.*$`, errorLog)
+	}
 
-		if err != nil {
-			return err
-		}
-
-		// If an error was found, print the error log
-		if foundError {
-			fmt.Print(string(errorLog))
-			return errors.New("an error occured during MariaDB bootstrapping")
-		}
+	// And if we found an error, return an error
+	if foundError {
+		return errors.New("an error occured during MariaDB bootstrapping")
 	}
 
 	return nil
