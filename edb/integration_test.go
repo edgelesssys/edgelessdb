@@ -407,9 +407,13 @@ func postManifest(serverCert string, manifest []byte) error {
 	if err != nil {
 		panic(err)
 	}
+	errMessage, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
+	if err != nil {
 		return errors.New(resp.Status)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(string(errMessage))
 	}
 
 	// wait until edb restarted

@@ -309,24 +309,21 @@ func printErrorLog(stdoutFd int, stderrFd int, onlyPrintOnError bool) error {
 	// Even when silent startup is set and nothing was printed to the error log
 	errorLog, err := ioutil.ReadFile("/tmp/mariadb-error.log")
 	if err != nil {
-		log.Println("ERROR: cannot read error log:", err)
-		return err
+		panic("cannot read MariaDB's error log: " + err.Error())
 	}
 
 	// Check if "ERROR" (case insensitive) occurs in MariaDB's error log
-	foundError, err := regexp.Match(`(?mi)^ERROR.*$`, errorLog)
-	if err != nil {
-		return err
-	}
+	pattern := regexp.MustCompile(`(?mi)^ERROR.*$`)
+	foundErrors := pattern.FindAllString(string(errorLog), -1)
 
 	// Print error log if an error was found or we explicitly asked for the log
-	if foundError || !onlyPrintOnError {
+	if foundErrors != nil || !onlyPrintOnError {
 		fmt.Print(string(errorLog))
 	}
 
-	// And if we found an error, return an error
-	if foundError {
-		return errors.New("an error occured during MariaDB bootstrapping")
+	// And if we found errors, return them to the caller
+	if foundErrors != nil {
+		return errors.New(strings.Join(foundErrors, ""))
 	}
 
 	return nil
