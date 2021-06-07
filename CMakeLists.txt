@@ -12,6 +12,7 @@ find_package(OpenEnclave CONFIG REQUIRED)
 set(MARIADB_CMAKE_ARGS
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
   -DEDBSRC=${CMAKE_SOURCE_DIR}/src
+  -DUPDATE_SUBMODULES=OFF
   -DPLUGIN_ROCKSDB=STATIC
   -DPLUGIN_ARCHIVE=NO
   -DPLUGIN_AUDIT_NULL=NO
@@ -63,9 +64,9 @@ set(MARIADB_CMAKE_ARGS
   -DWITH_PCRE=bundled
 )
 
-if (NOT MARIADB_DEV OR NOT EXISTS ${CMAKE_SOURCE_DIR}/server/.git)
+if (NOT MARIADB_DEV OR NOT EXISTS ${CMAKE_SOURCE_DIR}/3rdparty/mariadb/.git)
   execute_process(
-    COMMAND git submodule update --init --depth=1 --recursive server
+    COMMAND git submodule update --init --depth=1 --recursive 3rdparty/mariadb
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif ()
 
@@ -83,7 +84,7 @@ endif()
 #
 if (MARIADB_DEV)
   ExternalProject_Add(mariadb
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/server
+    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mariadb
     BUILD_ALWAYS ON
     BINARY_DIR mariadb
     CMAKE_ARGS ${MARIADB_CMAKE_ARGS}
@@ -91,7 +92,7 @@ if (MARIADB_DEV)
     INSTALL_COMMAND "")
 else ()
   ExternalProject_Add(mariadb
-    URL ${CMAKE_SOURCE_DIR}/server
+    URL ${CMAKE_SOURCE_DIR}/3rdparty/mariadb
     SOURCE_DIR mariadb-src
     PATCH_COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb.patch
     COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb-frm-files.patch
@@ -152,7 +153,7 @@ add_custom_target(genkey DEPENDS src/enclave.conf private.pem public.pem)
 # build mariadbd (statically linked) for testing purposes
 #
 
-add_executable(mariadbd server/sql/main.cc)
+add_executable(mariadbd 3rdparty/mariadb/sql/main.cc)
 add_dependencies(mariadbd mariadb)
 set_target_properties(mariadbd PROPERTIES EXCLUDE_FROM_ALL ON)
 
@@ -164,7 +165,7 @@ target_link_libraries(mariadbd
 # build emariadbd for testing purposes
 #
 
-add_executable(emariadbd server/sql/main.cc src/stubs.c)
+add_executable(emariadbd 3rdparty/mariadb/sql/main.cc src/stubs.c)
 add_dependencies(emariadbd mariadb genkey)
 set_target_properties(emariadbd PROPERTIES EXCLUDE_FROM_ALL ON)
 
