@@ -25,11 +25,12 @@ import (
 const edbInternalAddr = "EDB_INTERNAL_ADDR" // must be kept sync with src/mysqld_edb.cc
 
 const (
-	filenameCA   = "ca.pem"
-	filenameCert = "cert.pem"
-	filenameKey  = "key.pem"
-	filenameCnf  = "my.cnf"
-	filenameInit = "init.sql"
+	filenameCA       = "ca.pem"
+	filenameCert     = "cert.pem"
+	filenameKey      = "key.pem"
+	filenameCnf      = "my.cnf"
+	filenameInit     = "init.sql"
+	filenameErrorLog = "mariadb-error.log"
 )
 
 // Mariadbd is used to control mariadbd.
@@ -91,24 +92,30 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	d.log.Println("initializing ...")
 
 	// Remove already existing log file, as we do not want replayed logs
-	err := os.Remove("/tmp/mariadb-error.log")
+	err := os.Remove(filepath.Join(d.internalPath, filenameErrorLog))
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
 	// Save original stdout & stderr and print it after execution
 	// MariaDB will hijack it and forward it to its error log
-	origStdout, _ := syscall.Dup(syscall.Stdout)
-	origStderr, _ := syscall.Dup(syscall.Stderr)
+	origStdout, err := syscall.Dup(syscall.Stdout)
+	if err != nil {
+		panic("cannot save original stdout before bootstrapping, aborting")
+	}
+	origStderr, err := syscall.Dup(syscall.Stderr)
+	if err != nil {
+		panic("cannot save original stderr before bootstrapping, aborting")
+	}
 
 	// Launch MariaDB
 	if err := d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)); err != 0 {
-		printErrorLog(origStdout, origStderr, false)
+		d.printErrorLog(origStdout, origStderr, false)
 		d.log.Printf("FATAL: bootstrap failed, MariaDB exited with error code: %d\n", err)
 		panic("bootstrap failed")
 	}
 
-	return printErrorLog(origStdout, origStderr, true)
+	return d.printErrorLog(origStdout, origStderr, true)
 }
 
 // Start starts the database.
@@ -216,7 +223,7 @@ INSERT INTO $edgeless.config VALUES (%#x, %#x, %#x);
 datadir=` + d.externalPath + `
 default-storage-engine=ROCKSDB
 enforce-storage-engine=ROCKSDB
-log-error = /tmp/mariadb-error.log
+log-error =` + filepath.Join(d.internalPath, filenameErrorLog) + `
 bootstrap
 init-file=` + filepath.Join(d.internalPath, filenameInit) + `
 `
@@ -295,7 +302,7 @@ func sqlOpen(address string) (*sql.DB, error) {
 	return sql.Open("mysql", "root@tcp("+address+")/")
 }
 
-func printErrorLog(stdoutFd int, stderrFd int, onlyPrintOnError bool) error {
+func (d *Mariadb) printErrorLog(stdoutFd int, stderrFd int, onlyPrintOnError bool) error {
 	// Restore original stdout & stderr from MariaDB's redirection
 	if err := syscall.Dup2(stdoutFd, syscall.Stdout); err != nil {
 		panic("cannot restore stdout from MariaDB's redirection, aborting")
@@ -307,18 +314,19 @@ func printErrorLog(stdoutFd int, stderrFd int, onlyPrintOnError bool) error {
 	// Read error log from internal memfs
 	// This file should always be created when everything is somewhat running okay
 	// Even when silent startup is set and nothing was printed to the error log
-	errorLog, err := ioutil.ReadFile("/tmp/mariadb-error.log")
+	errorLogBytes, err := ioutil.ReadFile(filepath.Join(d.internalPath, filenameErrorLog))
 	if err != nil {
 		panic("cannot read MariaDB's error log: " + err.Error())
 	}
+	errorLog := string(errorLogBytes)
 
 	// Check if "ERROR" (case insensitive) occurs in MariaDB's error log
 	pattern := regexp.MustCompile(`(?mi)^ERROR.*$`)
-	foundErrors := pattern.FindAllString(string(errorLog), -1)
+	foundErrors := pattern.FindAllString(errorLog, -1)
 
 	// Print error log if an error was found or we explicitly asked for the log
 	if foundErrors != nil || !onlyPrintOnError {
-		fmt.Print(string(errorLog))
+		fmt.Print(errorLog)
 	}
 
 	// And if we found errors, return them to the caller
