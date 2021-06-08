@@ -57,5 +57,5 @@ func (runtime) GetRemoteReport(reportData []byte) ([]byte, error) {
 }
 
 func (runtime) GetProductSealKey() ([]byte, error) {
-	return nil, errors.New("GetProductSealKey: not running in an enclave")
+	return make([]byte, 16), nil
 }

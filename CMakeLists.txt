@@ -11,7 +11,7 @@ find_package(OpenEnclave CONFIG REQUIRED)
 
 set(MARIADB_CMAKE_ARGS
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-  -DEDBSRC=${CMAKE_SOURCE_DIR}/src
+  -DEDBDIR=${CMAKE_SOURCE_DIR}
   -DUPDATE_SUBMODULES=OFF
   -DPLUGIN_ROCKSDB=STATIC
   -DPLUGIN_ARCHIVE=NO
@@ -69,6 +69,10 @@ if (NOT MARIADB_DEV OR NOT EXISTS ${CMAKE_SOURCE_DIR}/3rdparty/mariadb/.git)
     COMMAND git submodule update --init --depth=1 --recursive 3rdparty/mariadb
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif ()
+
+execute_process(
+  COMMAND git submodule update --init --depth=1 --recursive 3rdparty/edgeless-rocksdb
+  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 ProcessorCount(NPROC)
 
