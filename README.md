@@ -25,6 +25,6 @@ go test -v -tags integration ./edb -e ../build/edb
 ```sh
 cd build
 make emariadbd
-mariadb/scripts/mysql_install_db --srcdir=../server --auth-root-authentication-method=normal
+mariadb/scripts/mysql_install_db --srcdir=../3rdparty/mariadb --auth-root-authentication-method=normal
 erthost emariadbd.signed --datadir=./data --default-storage-engine=rocksdb
 ```
