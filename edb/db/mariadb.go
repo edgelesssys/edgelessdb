@@ -33,6 +33,9 @@ const (
 	filenameErrorLog = "mariadb-error.log"
 )
 
+// ErrPreviousInitFailed is thrown when a previous initialization attempt failed, but another init or start is attempted.
+var ErrPreviousInitFailed = errors.New("a previous initialization attempt failed")
+
 // Mariadbd is used to control mariadbd.
 type Mariadbd interface {
 	Main(cnfPath string) int
@@ -51,6 +54,7 @@ type Mariadb struct {
 	key                              crypto.PrivateKey
 	manifestSig                      []byte
 	ca                               string
+	attemptedInit                    bool
 }
 
 // NewMariadb creates a new Mariadb object.
@@ -78,6 +82,10 @@ func (d *Mariadb) GetCertificate() ([]byte, crypto.PrivateKey) {
 func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	if d.manifestSig != nil {
 		return errors.New("already initialized")
+	}
+	if d.attemptedInit {
+		d.log.Println("Cannot initialize the database, a previous attempt failed. The DB is in an inconsistent state. Please provide an empty data directory.")
+		return ErrPreviousInitFailed
 	}
 
 	var man manifest
@@ -107,6 +115,8 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	if err != nil {
 		panic("cannot save original stderr before bootstrapping, aborting")
 	}
+
+	d.attemptedInit = true
 
 	// Launch MariaDB
 	if err := d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)); err != 0 {
@@ -152,7 +162,7 @@ func (d *Mariadb) Start() error {
 
 	cert, key, jsonManifest, err := getConfigFromSQL(normalizedInternalAddr)
 	if err != nil {
-		d.log.Println("An intialization attempt failed. The DB is in an inconsistent state. Please provide an empty data directory")
+		d.log.Println("An initialization attempt failed. The DB is in an inconsistent state. Please provide an empty data directory.")
 		d.log.Fatalln(err)
 	}
 

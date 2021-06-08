@@ -188,7 +188,7 @@ func TestPersistence(t *testing.T) {
 	assert.Equal(2., val)
 }
 
-func DisabledTestInvalidQueryInManifest(t *testing.T) { //TODO
+func TestInvalidQueryInManifest(t *testing.T) {
 	assert := assert.New(t)
 
 	cfgFilename := createConfig()
@@ -212,7 +212,7 @@ func DisabledTestInvalidQueryInManifest(t *testing.T) { //TODO
 
 	// DB cannot be started after failed attempt
 	log.SetOutput(ioutil.Discard)
-	assert.Nil(startEDB(cfgFilename))
+	assert.Error(createEdbCmd(cfgFilename).Run())
 	log.SetOutput(os.Stdout)
 }
 
@@ -288,11 +288,7 @@ func cleanupConfig(filename string) {
 }
 
 func startEDB(configFilename string) *os.Process {
-	cmd := exec.Command(*exe, "-c", configFilename)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Setpgid:   true,            // group child with grandchildren so that we can kill 'em all
-		Pdeathsig: syscall.SIGKILL, // kill child if test dies
-	}
+	cmd := createEdbCmd(configFilename)
 	go func() {
 		if *showEdbOutput {
 			cmd.Stdout = os.Stdout
@@ -323,6 +319,15 @@ func startEDB(configFilename string) *os.Process {
 			return cmd.Process
 		}
 	}
+}
+
+func createEdbCmd(configFilename string) *exec.Cmd {
+	cmd := exec.Command(*exe, "-c", configFilename)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Setpgid:   true,            // group child with grandchildren so that we can kill 'em all
+		Pdeathsig: syscall.SIGKILL, // kill child if test dies
+	}
+	return cmd
 }
 
 func isUnexpectedEDBError(err error) bool {
