@@ -15,7 +15,9 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
+	"syscall"
 
 	_ "github.com/go-sql-driver/mysql" // import driver used via the database/sql package
 )
@@ -23,12 +25,16 @@ import (
 const edbInternalAddr = "EDB_INTERNAL_ADDR" // must be kept sync with src/mysqld_edb.cc
 
 const (
-	filenameCA   = "ca.pem"
-	filenameCert = "cert.pem"
-	filenameKey  = "key.pem"
-	filenameCnf  = "my.cnf"
-	filenameInit = "init.sql"
+	filenameCA       = "ca.pem"
+	filenameCert     = "cert.pem"
+	filenameKey      = "key.pem"
+	filenameCnf      = "my.cnf"
+	filenameInit     = "init.sql"
+	filenameErrorLog = "mariadb-error.log"
 )
+
+// ErrPreviousInitFailed is thrown when a previous initialization attempt failed, but another init or start is attempted.
+var ErrPreviousInitFailed = errors.New("a previous initialization attempt failed")
 
 // Mariadbd is used to control mariadbd.
 type Mariadbd interface {
@@ -48,6 +54,7 @@ type Mariadb struct {
 	key                              crypto.PrivateKey
 	manifestSig                      []byte
 	ca                               string
+	attemptedInit                    bool
 }
 
 // NewMariadb creates a new Mariadb object.
@@ -76,6 +83,10 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	if d.manifestSig != nil {
 		return errors.New("already initialized")
 	}
+	if d.attemptedInit {
+		d.log.Println("Cannot initialize the database, a previous attempt failed. The DB is in an inconsistent state. Please provide an empty data directory.")
+		return ErrPreviousInitFailed
+	}
 
 	var man manifest
 	if err := json.Unmarshal(jsonManifest, &man); err != nil {
@@ -87,14 +98,34 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	}
 
 	d.log.Println("initializing ...")
-	if d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)) != 0 {
-		// unrecoverable
-		// TODO AB#882 pass concrete error to owner (might be an error in man.SQL)
-		// Note that there can be SQL errors even if Main returns 0
+
+	// Remove already existing log file, as we do not want replayed logs
+	err := os.Remove(filepath.Join(d.internalPath, filenameErrorLog))
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+
+	// Save original stdout & stderr and print it after execution
+	// MariaDB will hijack it and forward it to its error log
+	origStdout, err := syscall.Dup(syscall.Stdout)
+	if err != nil {
+		panic("cannot save original stdout before bootstrapping, aborting")
+	}
+	origStderr, err := syscall.Dup(syscall.Stderr)
+	if err != nil {
+		panic("cannot save original stderr before bootstrapping, aborting")
+	}
+
+	d.attemptedInit = true
+
+	// Launch MariaDB
+	if err := d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)); err != 0 {
+		d.printErrorLog(origStdout, origStderr, false)
+		d.log.Printf("FATAL: bootstrap failed, MariaDB exited with error code: %d\n", err)
 		panic("bootstrap failed")
 	}
 
-	return nil
+	return d.printErrorLog(origStdout, origStderr, true)
 }
 
 // Start starts the database.
@@ -131,7 +162,7 @@ func (d *Mariadb) Start() error {
 
 	cert, key, jsonManifest, err := getConfigFromSQL(normalizedInternalAddr)
 	if err != nil {
-		d.log.Println("An intialization attempt failed. The DB is in an inconsistent state. Please provide an empty data directory")
+		d.log.Println("An initialization attempt failed. The DB is in an inconsistent state. Please provide an empty data directory.")
 		d.log.Fatalln(err)
 	}
 
@@ -202,6 +233,7 @@ INSERT INTO $edgeless.config VALUES (%#x, %#x, %#x);
 datadir=` + d.externalPath + `
 default-storage-engine=ROCKSDB
 enforce-storage-engine=ROCKSDB
+log-error =` + filepath.Join(d.internalPath, filenameErrorLog) + `
 bootstrap
 init-file=` + filepath.Join(d.internalPath, filenameInit) + `
 `
@@ -279,4 +311,39 @@ func getConfigFromSQL(address string) (cert []byte, key crypto.PrivateKey, confi
 
 func sqlOpen(address string) (*sql.DB, error) {
 	return sql.Open("mysql", "root@tcp("+address+")/")
+}
+
+func (d *Mariadb) printErrorLog(stdoutFd int, stderrFd int, onlyPrintOnError bool) error {
+	// Restore original stdout & stderr from MariaDB's redirection
+	if err := syscall.Dup2(stdoutFd, syscall.Stdout); err != nil {
+		panic("cannot restore stdout from MariaDB's redirection, aborting")
+	}
+	if err := syscall.Dup2(stderrFd, syscall.Stderr); err != nil {
+		panic("cannot restore stderr from MariaDB's redirection, aborting")
+	}
+
+	// Read error log from internal memfs
+	// This file should always be created when everything is somewhat running okay
+	// Even when silent startup is set and nothing was printed to the error log
+	errorLogBytes, err := ioutil.ReadFile(filepath.Join(d.internalPath, filenameErrorLog))
+	if err != nil {
+		panic("cannot read MariaDB's error log: " + err.Error())
+	}
+	errorLog := string(errorLogBytes)
+
+	// Check if "ERROR" (case insensitive) occurs in MariaDB's error log
+	pattern := regexp.MustCompile(`(?mi)^ERROR.*$`)
+	foundErrors := pattern.FindAllString(errorLog, -1)
+
+	// Print error log if an error was found or we explicitly asked for the log
+	if foundErrors != nil || !onlyPrintOnError {
+		fmt.Print(errorLog)
+	}
+
+	// And if we found errors, return them to the caller
+	if foundErrors != nil {
+		return errors.New(strings.Join(foundErrors, ""))
+	}
+
+	return nil
 }
