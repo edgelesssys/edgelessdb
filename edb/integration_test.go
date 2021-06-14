@@ -78,9 +78,9 @@ func getListenerAndAddr() (net.Listener, string) {
 // sanity test of the integration test environment
 func TestTest(t *testing.T) {
 	assert := assert.New(t)
-	cfgFilename := createConfig()
-	defer cleanupConfig(cfgFilename)
-	assert.Nil(startEDB(cfgFilename).Kill())
+	setConfig()
+	defer cleanupConfig()
+	assert.Nil(startEDB().Kill())
 }
 
 func TestReaderWriter(t *testing.T) {
@@ -99,9 +99,9 @@ func TestReaderWriter(t *testing.T) {
 		"GRANT INSERT ON test.data TO writer",
 	})
 
-	cfgFilename := createConfig()
-	defer cleanupConfig(cfgFilename)
-	process := startEDB(cfgFilename)
+	setConfig()
+	defer cleanupConfig()
+	process := startEDB()
 	assert.NotNil(process)
 	defer process.Kill()
 
@@ -152,10 +152,10 @@ func TestPersistence(t *testing.T) {
 		"GRANT ALL ON test.data TO usr",
 	})
 
-	cfgFilename := createConfig()
-	defer cleanupConfig(cfgFilename)
+	setConfig()
+	defer cleanupConfig()
 
-	process := startEDB(cfgFilename)
+	process := startEDB()
 	assert.NotNil(process)
 
 	serverCert := getServerCertificate()
@@ -171,7 +171,7 @@ func TestPersistence(t *testing.T) {
 	// TODO: Find out why restarting EDB here sometimes fails (stdout/err seems to be empty)
 	// TODO AB#875 This is from legacy TiDB-based EDB. Check if this is still true for MariaDB-based EDB.
 	for i := 0; i < 3; i++ {
-		process = startEDB(cfgFilename)
+		process = startEDB()
 		if process != nil {
 			break
 		}
@@ -191,10 +191,10 @@ func TestPersistence(t *testing.T) {
 func TestInvalidQueryInManifest(t *testing.T) {
 	assert := assert.New(t)
 
-	cfgFilename := createConfig()
-	defer cleanupConfig(cfgFilename)
+	setConfig()
+	defer cleanupConfig()
 
-	process := startEDB(cfgFilename)
+	process := startEDB()
 	assert.NotNil(process)
 
 	serverCert := getServerCertificate()
@@ -212,16 +212,16 @@ func TestInvalidQueryInManifest(t *testing.T) {
 
 	// DB cannot be started after failed attempt
 	log.SetOutput(ioutil.Discard)
-	assert.Error(createEdbCmd(cfgFilename).Run())
+	assert.Error(createEdbCmd().Run())
 	log.SetOutput(os.Stdout)
 }
 
 func TestCurl(t *testing.T) {
 	assert := assert.New(t)
 
-	cfgFilename := createConfig()
-	defer cleanupConfig(cfgFilename)
-	process := startEDB(cfgFilename)
+	setConfig()
+	defer cleanupConfig()
+	process := startEDB()
 	assert.NotNil(process)
 	defer process.Kill()
 
@@ -239,56 +239,37 @@ func TestCurl(t *testing.T) {
 	assert.Nil(exec.Command("curl", "--cacert", certFilename, "https://"+addrAPI+"/signature").Run())
 }
 
-func createConfig() string {
-	cfg := core.Config{DatabaseAddress: addrDB, APIAddress: addrAPI}
-	var err error
-	cfg.DataPath, err = ioutil.TempDir("", "")
+func setConfig() {
+	tempPath, err := ioutil.TempDir("", "")
 	if err != nil {
 		panic(err)
 	}
-
-	jsonCfg, err := json.Marshal(cfg)
-	if err != nil {
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-
-	file, err := ioutil.TempFile("", "")
-	if err != nil {
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-
-	name := file.Name()
-
-	_, err = file.Write(jsonCfg)
-	file.Close()
-	if err != nil {
-		os.Remove(name)
-		os.RemoveAll(cfg.DataPath)
-		panic(err)
-	}
-
-	return name
+	os.Setenv(core.EnvAPIAddress, addrAPI)
+	os.Setenv(core.EnvDatabaseAddress, addrDB)
+	os.Setenv(core.EnvDataPath, tempPath)
 }
 
-func cleanupConfig(filename string) {
-	jsonCfg, err := ioutil.ReadFile(filename)
-	os.Remove(filename)
-	if err != nil {
+func cleanupConfig() error {
+	if err := os.Unsetenv(core.EnvAPIAddress); err != nil {
+		return err
+	}
+	if err := os.Unsetenv(core.EnvDatabaseAddress); err != nil {
+		return err
+	}
+
+	tempPath := os.Getenv(core.EnvDataPath)
+	if err := os.Unsetenv(core.EnvDataPath); err != nil {
 		panic(err)
 	}
-	var cfg core.Config
-	if err := json.Unmarshal(jsonCfg, &cfg); err != nil {
+	if err := os.RemoveAll(tempPath); err != nil {
 		panic(err)
 	}
-	if err := os.RemoveAll(cfg.DataPath); err != nil {
-		panic(err)
-	}
+
+	return nil
 }
 
-func startEDB(configFilename string) *os.Process {
-	cmd := createEdbCmd(configFilename)
+func startEDB() *os.Process {
+	cmd := createEdbCmd()
 	go func() {
 		if *showEdbOutput {
 			cmd.Stdout = os.Stdout
@@ -321,8 +302,8 @@ func startEDB(configFilename string) *os.Process {
 	}
 }
 
-func createEdbCmd(configFilename string) *exec.Cmd {
-	cmd := exec.Command(*exe, "-c", configFilename)
+func createEdbCmd() *exec.Cmd {
+	cmd := exec.Command(*exe)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid:   true,            // group child with grandchildren so that we can kill 'em all
 		Pdeathsig: syscall.SIGKILL, // kill child if test dies
