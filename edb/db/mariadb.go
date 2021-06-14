@@ -25,12 +25,16 @@ import (
 const edbInternalAddr = "EDB_INTERNAL_ADDR" // must be kept sync with src/mysqld_edb.cc
 
 const (
-	filenameCA       = "ca.pem"
-	filenameCert     = "cert.pem"
-	filenameKey      = "key.pem"
-	filenameCnf      = "my.cnf"
-	filenameInit     = "init.sql"
-	filenameErrorLog = "mariadb-error.log"
+	filenameCA           = "ca.pem"
+	filenameCert         = "cert.pem"
+	filenameKey          = "key.pem"
+	filenameCnf          = "my.cnf"
+	filenameInit         = "init.sql"
+	filenameBootstrapLog = "mariadb-error.log"
+	filenameErrorLog     = "mariadb.err"
+	filenameGeneralLog   = "mariadb.log"
+	filenameSlowQueryLog = "mariadb-slow.log"
+	filenameBinaryLog    = "mariadb-binary.log"
 )
 
 // ErrPreviousInitFailed is thrown when a previous initialization attempt failed, but another init or start is attempted.
@@ -48,6 +52,8 @@ type Mariadb struct {
 	internalPath, externalPath       string
 	internalAddress, externalAddress string
 	certificateCommonName            string
+	debug                            bool
+	debugLogDir                      string
 	mariadbd                         Mariadbd
 	log                              *log.Logger
 	cert                             []byte
@@ -58,7 +64,7 @@ type Mariadb struct {
 }
 
 // NewMariadb creates a new Mariadb object.
-func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateCommonName string, mariadbd Mariadbd) (*Mariadb, error) {
+func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateCommonName, logDir string, debug bool, mariadbd Mariadbd) (*Mariadb, error) {
 	if err := os.MkdirAll(externalPath, 0700); err != nil {
 		return nil, err
 	}
@@ -68,6 +74,8 @@ func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, ce
 		internalAddress:       internalAddress,
 		externalAddress:       externalAddress,
 		certificateCommonName: certificateCommonName,
+		debug:                 debug,
+		debugLogDir:           logDir,
 		mariadbd:              mariadbd,
 		log:                   log.New(os.Stdout, "[EDB] ", log.LstdFlags),
 	}, nil
@@ -93,6 +101,10 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 		return err
 	}
 
+	if d.debug && !man.Debug {
+		return fmt.Errorf("edb was started in debug mode but the manifest does not allow debug mode")
+	}
+
 	if err := d.configureBootstrap(man.SQL, jsonManifest); err != nil {
 		return err
 	}
@@ -100,7 +112,7 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	d.log.Println("initializing ...")
 
 	// Remove already existing log file, as we do not want replayed logs
-	err := os.Remove(filepath.Join(d.internalPath, filenameErrorLog))
+	err := os.Remove(filepath.Join(d.internalPath, filenameBootstrapLog))
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -171,6 +183,10 @@ func (d *Mariadb) Start() error {
 		panic(err)
 	}
 
+	if d.debug && !man.Debug {
+		panic(fmt.Errorf("edb was started in debug mode but the manifest does not allow debug mode"))
+	}
+
 	d.setManifestSignature(jsonManifest)
 	d.ca = man.CA
 	d.cert = cert
@@ -233,10 +249,15 @@ INSERT INTO $edgeless.config VALUES (%#x, %#x, %#x);
 datadir=` + d.externalPath + `
 default-storage-engine=ROCKSDB
 enforce-storage-engine=ROCKSDB
-log-error =` + filepath.Join(d.internalPath, filenameErrorLog) + `
+log-error =` + filepath.Join(d.internalPath, filenameBootstrapLog) + `
 bootstrap
 init-file=` + filepath.Join(d.internalPath, filenameInit) + `
 `
+	if len(d.debugLogDir) > 0 {
+		cnf += fmt.Sprintf("%v=%v\n", "rocksdb_db_log_dir", d.debugLogDir)
+	} else {
+		cnf += fmt.Sprintf("%v=%v\n", "rocksdb_db_log_dir", d.internalPath)
+	}
 
 	if err := d.writeFile(filenameCnf, []byte(cnf)); err != nil {
 		return err
@@ -265,7 +286,33 @@ ssl-ca = "` + filepath.Join(d.internalPath, filenameCA) + `"
 ssl-cert = "` + filepath.Join(d.internalPath, filenameCert) + `"
 ssl-key = "` + filepath.Join(d.internalPath, filenameKey) + `"
 `
+	if d.debug {
+		// If nothing is specified ONLY error-log is printed on stderr
+		// Setting any of the logs without a file logs them to default files
+		// log-basename only works for logging to `datadir`
+		// https://mariadb.com/kb/en/error-log/
+		// https://mariadb.com/kb/en/error-log/#writing-the-error-log-to-stderr-on-unix
+		// https://mariadb.com/kb/en/general-query-log/
+		// https://mariadb.com/kb/en/slow-query-log-overview/
+		// http://myrocks.io/docs/getting-started/
+		if len(d.debugLogDir) > 0 {
+			logFiles := map[string]string{"log_error": filenameErrorLog, "general_log_file": filenameGeneralLog, "slow_query_log_file": filenameSlowQueryLog, "log_bin": filenameBinaryLog, "rocksdb_db_log_dir": ""}
+			for logName, logFile := range logFiles {
+				cnf += fmt.Sprintf("%v=%v\n", logName, filepath.Join(d.debugLogDir, logFile))
+			}
+		}
 
+		cnf += `
+general_log
+slow_query_log
+log_warnings=9
+binlog-format=ROW
+`
+	} else {
+		// Redirect error-log to memfs
+		cnf += fmt.Sprintf("%v=%v\n", "log_error", filepath.Join(d.internalPath, filenameErrorLog))
+		cnf += fmt.Sprintf("%v=%v\n", "rocksdb_db_log_dir", d.internalPath)
+	}
 	return d.writeFile(filenameCnf, []byte(cnf))
 }
 
@@ -325,7 +372,7 @@ func (d *Mariadb) printErrorLog(stdoutFd int, stderrFd int, onlyPrintOnError boo
 	// Read error log from internal memfs
 	// This file should always be created when everything is somewhat running okay
 	// Even when silent startup is set and nothing was printed to the error log
-	errorLogBytes, err := ioutil.ReadFile(filepath.Join(d.internalPath, filenameErrorLog))
+	errorLogBytes, err := ioutil.ReadFile(filepath.Join(d.internalPath, filenameBootstrapLog))
 	if err != nil {
 		panic("cannot read MariaDB's error log: " + err.Error())
 	}

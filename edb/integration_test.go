@@ -85,7 +85,7 @@ func getListenerAndAddr() (net.Listener, string) {
 // sanity test of the integration test environment
 func TestTest(t *testing.T) {
 	assert := assert.New(t)
-	setConfig()
+	setConfig(false, "")
 	defer cleanupConfig()
 	assert.Nil(startEDB("").Kill())
 }
@@ -104,9 +104,9 @@ func TestReaderWriter(t *testing.T) {
 		"CREATE TABLE test.data (i INT)",
 		"GRANT SELECT ON test.data TO reader",
 		"GRANT INSERT ON test.data TO writer",
-	})
+	}, false)
 
-	setConfig()
+	setConfig(false, "")
 	defer cleanupConfig()
 	process := startEDB("")
 	assert.NotNil(process)
@@ -115,7 +115,7 @@ func TestReaderWriter(t *testing.T) {
 	// Owner
 	{
 		serverCert := getServerCertificate()
-		assert.Nil(postManifest(serverCert, manifest))
+		assert.Nil(postManifest(serverCert, manifest, true))
 	}
 
 	// Writer
@@ -157,16 +157,16 @@ func TestPersistence(t *testing.T) {
 		"CREATE DATABASE test",
 		"CREATE TABLE test.data (i INT)",
 		"GRANT ALL ON test.data TO usr",
-	})
+	}, false)
 
-	setConfig()
+	setConfig(false, "")
 	defer cleanupConfig()
 
 	process := startEDB("")
 	assert.NotNil(process)
 
 	serverCert := getServerCertificate()
-	assert.Nil(postManifest(serverCert, manifest))
+	assert.Nil(postManifest(serverCert, manifest, true))
 
 	db := sqlOpen("usr", usrCert, usrKey, serverCert)
 	_, err := db.Exec("INSERT INTO test.data VALUES (2)")
@@ -198,7 +198,7 @@ func TestPersistence(t *testing.T) {
 func TestInvalidQueryInManifest(t *testing.T) {
 	assert := assert.New(t)
 
-	setConfig()
+	setConfig(false, "")
 	defer cleanupConfig()
 
 	process := startEDB("")
@@ -208,12 +208,12 @@ func TestInvalidQueryInManifest(t *testing.T) {
 
 	assert.NotNil(postManifest(serverCert, createManifest("", []string{
 		"CREATE TABL test.data (i INT)",
-	})))
+	}, false), true))
 
 	// DB cannot be initialized after failed attempt
 	assert.NotNil(postManifest(serverCert, createManifest("", []string{
 		"CREATE TABLE test.data (i INT)",
-	})))
+	}, false), true))
 
 	assert.Nil(process.Kill())
 
@@ -226,7 +226,7 @@ func TestInvalidQueryInManifest(t *testing.T) {
 func TestCurl(t *testing.T) {
 	assert := assert.New(t)
 
-	setConfig()
+	setConfig(false, "")
 	defer cleanupConfig()
 	process := startEDB("")
 	assert.NotNil(process)
@@ -266,11 +266,130 @@ func TestLaunchAsMarble(t *testing.T) {
 	process := startEDB(marbleUUIDDir)
 	assert.NotNil(process)
 	defer process.Kill()
-
 	assert.NotEmpty(getServerCertificate())
 }
 
-func setConfig() {
+func TestLoggingDebug(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	logDir, err := ioutil.TempDir("", "")
+	require.NoError(err)
+	defer os.RemoveAll(logDir)
+
+	setConfig(true, logDir)
+	defer cleanupConfig()
+	process := startEDB("")
+	assert.NotNil(process)
+
+	serverCert := getServerCertificate()
+
+	assert.Nil(postManifest(serverCert, createManifest("", []string{
+		"CREATE TABLE test.data (i INT)",
+	}, true), true))
+
+	assert.Nil(process.Kill())
+
+	assert.FileExists(filepath.Join(logDir, "mariadb.err"))
+	assert.FileExists(filepath.Join(logDir, "mariadb.log"))
+	assert.FileExists(filepath.Join(logDir, "mariadb-slow.log"))
+}
+
+func TestLoggingNoDebug(t *testing.T) {
+	assert := assert.New(t)
+
+	logDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := os.RemoveAll(logDir); err != nil {
+			panic(err)
+		}
+	}()
+
+	setConfig(false, "")
+	defer cleanupConfig()
+	process := startEDB("")
+	assert.NotNil(process)
+
+	serverCert := getServerCertificate()
+
+	assert.Nil(postManifest(serverCert, createManifest("", []string{
+		"CREATE TABLE test.data (i INT)",
+	}, true), true))
+
+	assert.Nil(process.Kill())
+
+	assert.NoFileExists(filepath.Join(logDir, "mariadb.err"))
+	assert.NoFileExists(filepath.Join(logDir, "mariadb.log"))
+	assert.NoFileExists(filepath.Join(logDir, "mariadb-slow.log"))
+}
+
+func TestLoggingDebugStderr(t *testing.T) {
+	assert := assert.New(t)
+
+	logDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := os.RemoveAll(logDir); err != nil {
+			panic(err)
+		}
+	}()
+
+	setConfig(true, "")
+	defer cleanupConfig()
+	process := startEDB("")
+	assert.NotNil(process)
+
+	serverCert := getServerCertificate()
+
+	assert.Nil(postManifest(serverCert, createManifest("", []string{
+		"CREATE TABLE test.data (i INT)",
+	}, true), true))
+
+	assert.Nil(process.Kill())
+
+	assert.NoFileExists(filepath.Join(logDir, "mariadb.err"))
+	assert.NoFileExists(filepath.Join(logDir, "mariadb.log"))
+	assert.NoFileExists(filepath.Join(logDir, "mariadb-slow.log"))
+}
+
+func TestLoggingNotSetInManifest(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	logDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		panic(err)
+	}
+	defer func() {
+		if err := os.RemoveAll(logDir); err != nil {
+			panic(err)
+		}
+	}()
+
+	setConfig(true, logDir)
+	defer cleanupConfig()
+	// starting EDB
+	cmd := createEdbCmd("")
+	require.NoError(cmd.Start())
+
+	log.Println("EDB starting ...")
+	waitForEDB(cmd)
+
+	serverCert := getServerCertificate()
+
+	assert.NotNil(postManifest(serverCert, createManifest("", []string{
+		"CREATE TABLE test.data (i INT)",
+	}, false), false))
+
+	assert.Error(cmd.Wait())
+}
+
+func setConfig(debug bool, logDir string) {
 	tempPath, err := ioutil.TempDir("", "")
 	if err != nil {
 		panic(err)
@@ -278,6 +397,10 @@ func setConfig() {
 	os.Setenv(core.EnvAPIAddress, addrAPI)
 	os.Setenv(core.EnvDatabaseAddress, addrDB)
 	os.Setenv(core.EnvDataPath, tempPath)
+	if debug {
+		os.Setenv(core.EnvDebug, "ON")
+	}
+	os.Setenv(core.EnvLogDir, logDir)
 }
 
 func cleanupConfig() {
@@ -293,6 +416,12 @@ func cleanupConfig() {
 		panic(err)
 	}
 	if err := os.RemoveAll(tempPath); err != nil {
+		panic(err)
+	}
+	if err := os.Unsetenv(core.EnvDebug); err != nil {
+		panic(err)
+	}
+	if err := os.Unsetenv(core.EnvLogDir); err != nil {
 		panic(err)
 	}
 }
@@ -313,10 +442,13 @@ func startEDB(marbleUUIDPath string) *os.Process {
 		}
 	}()
 
+	log.Println("EDB starting ...")
+	return waitForEDB(cmd)
+}
+
+func waitForEDB(cmd *exec.Cmd) *os.Process {
 	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	url := url.URL{Scheme: "https", Host: addrAPI, Path: "signature"}
-
-	log.Println("EDB starting ...")
 	for {
 		time.Sleep(10 * time.Millisecond)
 		resp, err := client.Head(url.String())
@@ -397,11 +529,12 @@ func getServerCertificate() string {
 	return string(pem.EncodeToMemory(blocks[0]))
 }
 
-func createManifest(ca string, sql []string) []byte {
+func createManifest(ca string, sql []string, debug bool) []byte {
 	manifest := struct {
-		SQL []string
-		CA  string
-	}{sql, ca}
+		SQL   []string
+		CA    string
+		Debug bool
+	}{sql, ca, debug}
 	jsonManifest, err := json.Marshal(manifest)
 	if err != nil {
 		panic(err)
@@ -433,7 +566,7 @@ func getManifestSignature(serverCert string) string {
 	return string(body)
 }
 
-func postManifest(serverCert string, manifest []byte) error {
+func postManifest(serverCert string, manifest []byte, waitForRestart bool) error {
 	client := createHttpClient(serverCert)
 	url := url.URL{Scheme: "https", Host: addrAPI, Path: "manifest"}
 
@@ -449,6 +582,10 @@ func postManifest(serverCert string, manifest []byte) error {
 	}
 	if resp.StatusCode != http.StatusOK {
 		return errors.New(string(errMessage))
+	}
+
+	if !waitForRestart {
+		return nil
 	}
 
 	// wait until edb restarted

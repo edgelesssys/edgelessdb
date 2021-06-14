@@ -29,6 +29,8 @@ func main() {
 		DatabaseAddress:       "127.0.0.1",
 		APIAddress:            "127.0.0.1:8080",
 		CertificateCommonName: "localhost",
+		Debug:                 false,
+		LogDir:                "",
 	}
 
 	// Load config parameters from environment variables
