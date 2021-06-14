@@ -10,7 +10,7 @@ import (
 )
 
 func run(cfg core.Config, internalPath string, internalAddress string) {
-	db, err := db.NewMariadb(internalPath, cfg.DataPath, internalAddress, cfg.DatabaseAddress, cfg.CertificateCommonName, mariadbd{})
+	db, err := db.NewMariadb(internalPath, cfg.DataPath, internalAddress, cfg.DatabaseAddress, cfg.CertificateCommonName, cfg.LogDir, cfg.Debug, mariadbd{})
 	if err != nil {
 		panic(err)
 	}

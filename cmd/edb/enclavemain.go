@@ -28,6 +28,8 @@ func main() {
 		DataPath:              "data",
 		APIAddress:            ":8080",
 		CertificateCommonName: "localhost",
+		Debug:                 false,
+		LogDir:                "",
 	}
 
 	// Load config parameters from environment variables
@@ -36,6 +38,18 @@ func main() {
 	internalPath := "/tmp/edb"
 	if err := os.Mkdir(internalPath, 0); err != nil {
 		panic(err)
+	}
+
+	// mount logDir from hostfs if set
+	if len(config.LogDir) > 0 {
+		absLogPath := enclaveAbsPath(config.LogDir)
+		if err := os.MkdirAll(hostPath(absLogPath), 0700); err != nil {
+			panic(err)
+		}
+		if err := syscall.Mount(absLogPath, "/log", "oe_host_file_system", 0, ""); err != nil {
+			panic(err)
+		}
+		config.LogDir = "/log"
 	}
 
 	// mount rocksdb dir from hostfs

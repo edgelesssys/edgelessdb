@@ -15,6 +15,7 @@ type Database interface {
 }
 
 type manifest struct {
-	SQL []string
-	CA  string
+	SQL   []string
+	CA    string
+	Debug bool
 }

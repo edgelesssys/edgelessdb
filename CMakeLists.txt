@@ -100,6 +100,7 @@ else ()
     SOURCE_DIR mariadb-src
     PATCH_COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb.patch
     COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb-frm-files.patch
+    COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb-rocksdb-logging.patch
     BINARY_DIR mariadb
     CMAKE_ARGS ${MARIADB_CMAKE_ARGS}
     BUILD_COMMAND make -j ${NPROC} mariadbd my_print_defaults resolveip
