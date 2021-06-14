@@ -10,11 +10,20 @@ import (
 
 	"github.com/edgelesssys/edb/edb/core"
 	"github.com/edgelesssys/ego/enclave"
+	"github.com/edgelesssys/marblerun/marble/premain"
 )
 
 func main() {
+	runAsMarble := flag.Bool("marble", false, "Run edb with Marblerun")
 	configFilename := flag.String("c", "", "config file")
 	flag.Parse()
+
+	if *runAsMarble {
+		// Contact Marblerun to provision edb
+		if err := premain.PreMainEgo(); err != nil {
+			panic(err)
+		}
+	}
 
 	config := core.Config{
 		DataPath:              "data",
