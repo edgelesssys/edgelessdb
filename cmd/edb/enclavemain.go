@@ -15,7 +15,6 @@ import (
 
 func main() {
 	runAsMarble := flag.Bool("marble", false, "Run edb with Marblerun")
-	configFilename := flag.String("c", "", "config file")
 	flag.Parse()
 
 	if *runAsMarble {
@@ -31,13 +30,8 @@ func main() {
 		CertificateCommonName: "localhost",
 	}
 
-	if *configFilename != "" {
-		var err error
-		config, err = core.ReadConfig(hostPath(*configFilename), config)
-		if err != nil {
-			panic(err)
-		}
-	}
+	// Load config parameters from environment variables
+	config = core.FillConfigFromEnvironment(config)
 
 	internalPath := "/tmp/edb"
 	if err := os.Mkdir(internalPath, 0); err != nil {
