@@ -235,6 +235,6 @@ add_custom_command(TARGET edb-enclave POST_BUILD
   COMMAND openenclave::oesign sign -e $<TARGET_FILE:edb-enclave> -c
           ${CMAKE_SOURCE_DIR}/src/enclave.conf -k private.pem
   COMMAND openenclave::oesign eradump -e edb-enclave.signed >
-          edb-enclave-config.json)
+          edb-enclave.json)
 
 configure_file(src/edb edb COPYONLY)
