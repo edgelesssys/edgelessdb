@@ -62,7 +62,7 @@ func main() {
 	}
 	config.DataPath = "/data"
 
-	run(config, internalPath, "255.0.0.1")
+	run(config, *runAsMarble, internalPath, "255.0.0.1")
 }
 
 func enclaveAbsPath(path string) string {

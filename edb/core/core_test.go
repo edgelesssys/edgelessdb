@@ -67,7 +67,7 @@ func TestEncryptRecoveryKey(t *testing.T) {
 func newCoreWithMocks() *Core {
 	rt := rt.RuntimeMock{}
 	db := db.DatabaseMock{}
-	return NewCore(&rt, &db)
+	return NewCore(&rt, &db, false)
 }
 
 func createMockCertificate() (string, *rsa.PrivateKey) {

@@ -23,15 +23,16 @@ import (
 
 // Core implements the core logic of EDB.
 type Core struct {
-	rt     rt.Runtime
-	db     db.Database
-	mutex  sync.Mutex
-	report []byte
+	rt       rt.Runtime
+	db       db.Database
+	mutex    sync.Mutex
+	report   []byte
+	isMarble bool
 }
 
 // NewCore creates a new Core object.
-func NewCore(rt rt.Runtime, db db.Database) *Core {
-	return &Core{rt: rt, db: db}
+func NewCore(rt rt.Runtime, db db.Database, isMarble bool) *Core {
+	return &Core{rt: rt, db: db, isMarble: isMarble}
 }
 
 // GetManifestSignature returns the signature of the manifest that has been used to initialize the database.

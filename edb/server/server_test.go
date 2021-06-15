@@ -33,7 +33,7 @@ func TestManifest(t *testing.T) {
 
 	rt := rt.RuntimeMock{}
 	db := db.DatabaseMock{}
-	core := core.NewCore(&rt, &db)
+	core := core.NewCore(&rt, &db, false)
 	mux := CreateServeMux(core)
 
 	req := httptest.NewRequest("POST", "/manifest", strings.NewReader(jsonManifest))
@@ -57,7 +57,7 @@ func TestManifestRecovery(t *testing.T) {
 
 	rt := rt.RuntimeMock{}
 	db := db.DatabaseMock{}
-	core := core.NewCore(&rt, &db)
+	core := core.NewCore(&rt, &db, false)
 	mux := CreateServeMux(core)
 
 	req := httptest.NewRequest("POST", "/manifest", strings.NewReader(jsonManifest))
