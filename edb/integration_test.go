@@ -4,6 +4,7 @@ package edb
 
 import (
 	"bytes"
+	"context"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -24,19 +25,25 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/edgelesssys/edb/edb/core"
 	"github.com/edgelesssys/era/era"
+	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/go-sql-driver/mysql"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 var exe = flag.String("e", "", "EDB executable")
 var showEdbOutput = flag.Bool("show-edb-output", false, "")
 var addrAPI, addrDB string
+var coordinatorAddress string // For Marblerun integration tests
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -80,7 +87,7 @@ func TestTest(t *testing.T) {
 	assert := assert.New(t)
 	setConfig()
 	defer cleanupConfig()
-	assert.Nil(startEDB().Kill())
+	assert.Nil(startEDB("").Kill())
 }
 
 func TestReaderWriter(t *testing.T) {
@@ -101,7 +108,7 @@ func TestReaderWriter(t *testing.T) {
 
 	setConfig()
 	defer cleanupConfig()
-	process := startEDB()
+	process := startEDB("")
 	assert.NotNil(process)
 	defer process.Kill()
 
@@ -155,7 +162,7 @@ func TestPersistence(t *testing.T) {
 	setConfig()
 	defer cleanupConfig()
 
-	process := startEDB()
+	process := startEDB("")
 	assert.NotNil(process)
 
 	serverCert := getServerCertificate()
@@ -171,7 +178,7 @@ func TestPersistence(t *testing.T) {
 	// TODO: Find out why restarting EDB here sometimes fails (stdout/err seems to be empty)
 	// TODO AB#875 This is from legacy TiDB-based EDB. Check if this is still true for MariaDB-based EDB.
 	for i := 0; i < 3; i++ {
-		process = startEDB()
+		process = startEDB("")
 		if process != nil {
 			break
 		}
@@ -194,7 +201,7 @@ func TestInvalidQueryInManifest(t *testing.T) {
 	setConfig()
 	defer cleanupConfig()
 
-	process := startEDB()
+	process := startEDB("")
 	assert.NotNil(process)
 
 	serverCert := getServerCertificate()
@@ -212,7 +219,7 @@ func TestInvalidQueryInManifest(t *testing.T) {
 
 	// DB cannot be started after failed attempt
 	log.SetOutput(ioutil.Discard)
-	assert.Error(createEdbCmd().Run())
+	assert.Error(createEdbCmd("").Run())
 	log.SetOutput(os.Stdout)
 }
 
@@ -221,7 +228,7 @@ func TestCurl(t *testing.T) {
 
 	setConfig()
 	defer cleanupConfig()
-	process := startEDB()
+	process := startEDB("")
 	assert.NotNil(process)
 	defer process.Kill()
 
@@ -239,6 +246,30 @@ func TestCurl(t *testing.T) {
 	assert.Nil(exec.Command("curl", "--cacert", certFilename, "https://"+addrAPI+"/signature").Run())
 }
 
+func TestLaunchAsMarble(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	// Setup mock Marblerun Coordinator
+	grpcServer, tempDir, err := startMockMarblerunCoordinator()
+	require.NoError(err)
+	defer grpcServer.Stop()
+	defer os.RemoveAll(tempDir)
+
+	// Setup UUID dir
+	marbleUUIDDir, err := ioutil.TempDir("", "")
+	require.NoError(err)
+	defer os.RemoveAll(marbleUUIDDir)
+
+	// No SetConfig before launching edb here.
+	// The marbleServer Activate function handles this part to mock Marblerun behavior.
+	process := startEDB(marbleUUIDDir)
+	assert.NotNil(process)
+	defer process.Kill()
+
+	assert.NotEmpty(getServerCertificate())
+}
+
 func setConfig() {
 	tempPath, err := ioutil.TempDir("", "")
 	if err != nil {
@@ -249,12 +280,12 @@ func setConfig() {
 	os.Setenv(core.EnvDataPath, tempPath)
 }
 
-func cleanupConfig() error {
+func cleanupConfig() {
 	if err := os.Unsetenv(core.EnvAPIAddress); err != nil {
-		return err
+		panic(err)
 	}
 	if err := os.Unsetenv(core.EnvDatabaseAddress); err != nil {
-		return err
+		panic(err)
 	}
 
 	tempPath := os.Getenv(core.EnvDataPath)
@@ -264,12 +295,11 @@ func cleanupConfig() error {
 	if err := os.RemoveAll(tempPath); err != nil {
 		panic(err)
 	}
-
-	return nil
 }
 
-func startEDB() *os.Process {
-	cmd := createEdbCmd()
+// Call with empty string for standalone mode, call with path for Marble mode
+func startEDB(marbleUUIDPath string) *os.Process {
+	cmd := createEdbCmd(marbleUUIDPath)
 	go func() {
 		if *showEdbOutput {
 			cmd.Stdout = os.Stdout
@@ -302,8 +332,21 @@ func startEDB() *os.Process {
 	}
 }
 
-func createEdbCmd() *exec.Cmd {
-	cmd := exec.Command(*exe)
+func createEdbCmd(marbleUUIDPath string) *exec.Cmd {
+	var cmd *exec.Cmd
+	// marbleUUIDPath set implies that edb is being run as a Marble
+	if marbleUUIDPath != "" {
+		// Setup edb to run as Marble
+		cmd = exec.Command(*exe, "-marble")
+		cmd.Env = append(os.Environ(),
+			"EDG_MARBLE_COORDINATOR_ADDR="+coordinatorAddress,
+			"EDG_MARBLE_TYPE=type",
+			"EDG_MARBLE_DNS_NAMES=localhost",
+			"EDG_MARBLE_UUID_FILE="+filepath.Join(marbleUUIDPath, "uuid"))
+	} else {
+		// Setup edb to run standalone
+		cmd = exec.Command(*exe)
+	}
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Setpgid:   true,            // group child with grandchildren so that we can kill 'em all
 		Pdeathsig: syscall.SIGKILL, // kill child if test dies
@@ -316,6 +359,15 @@ func isUnexpectedEDBError(err error) bool {
 }
 
 func createCertificate(commonName, signerCert, signerKey string) (cert, key string) {
+	certBytes, priv := generateCertificate(commonName, signerCert, signerKey)
+
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
+	keyBytes, _ := x509.MarshalPKCS8PrivateKey(priv)
+	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
+	return string(pemCert), string(pemKey)
+}
+
+func generateCertificate(commonName, signerCert, signerKey string) ([]byte, *rsa.PrivateKey) {
 	template := &x509.Certificate{
 		SerialNumber: &big.Int{},
 		Subject:      pkix.Name{CommonName: commonName},
@@ -334,10 +386,7 @@ func createCertificate(commonName, signerCert, signerKey string) (cert, key stri
 		certBytes, _ = x509.CreateCertificate(rand.Reader, template, parsedSignerCert, &priv.PublicKey, signer.PrivateKey)
 	}
 
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
-	keyBytes, _ := x509.MarshalPKCS8PrivateKey(priv)
-	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
-	return string(pemCert), string(pemKey)
+	return certBytes, priv
 }
 
 func getServerCertificate() string {
@@ -452,4 +501,47 @@ func sqlOpen(user, userCert, userKey, serverCert string) *sql.DB {
 		panic(err)
 	}
 	return db
+}
+
+// Marblerun mock functions down below
+func startMockMarblerunCoordinator() (*grpc.Server, string, error) {
+	// Create certificate for the Coordinator
+	certBytes, priv := generateCertificate("Mocked Coordinator", "", "")
+	cert := tls.Certificate{Certificate: [][]byte{certBytes}, PrivateKey: priv}
+
+	// Create temp directory for data
+	tempDir, err := ioutil.TempDir("", "")
+	if err != nil {
+		return nil, "", err
+	}
+
+	// Launch mocked gRPC Marblerun server
+	server := grpc.NewServer(grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
+	marbleServer := marbleServer{dataDir: tempDir}
+	rpc.RegisterMarbleServer(server, marbleServer)
+
+	listener, err := net.Listen("tcp", "localhost:")
+	if err != nil {
+		return nil, "", err
+	}
+
+	go func() {
+		if err := server.Serve(listener); err != nil {
+			panic(err)
+		}
+	}()
+
+	coordinatorAddress = listener.Addr().String()
+
+	return server, tempDir, nil
+}
+
+type marbleServer struct {
+	dataDir string
+}
+
+func (m marbleServer) Activate(context.Context, *rpc.ActivationReq) (*rpc.ActivationResp, error) {
+	return &rpc.ActivationResp{Parameters: &rpc.Parameters{
+		Env: map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir},
+	}}, nil
 }
