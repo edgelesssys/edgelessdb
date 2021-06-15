@@ -44,7 +44,7 @@ func main() {
 
 	config.DataPath = hostPath(config.DataPath)
 
-	run(config, internalPath, "127.0.0.1")
+	run(config, *runAsMarble, internalPath, "127.0.0.1")
 }
 
 func hostPath(path string) string {
