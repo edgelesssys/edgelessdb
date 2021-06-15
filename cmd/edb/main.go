@@ -19,7 +19,7 @@ func main() {
 
 	if *runAsMarble {
 		// Contact Marblerun to provision edb
-		if err := premain.PreMainEgo(); err != nil {
+		if err := premain.PreMainMock(); err != nil {
 			panic(err)
 		}
 	}
