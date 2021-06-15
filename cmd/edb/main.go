@@ -5,8 +5,10 @@ package main
 import (
 	"errors"
 	"flag"
+	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"path/filepath"
 
 	"github.com/edgelesssys/edb/edb/core"
@@ -44,6 +46,15 @@ func main() {
 
 	config.DataPath = hostPath(config.DataPath)
 
+	// Warn user this is not a trustful setup at all!
+	fmt.Println("edb is running in non-enclave mode without Marblerun.")
+	fmt.Println("This means edb will save the encryption key used IN PLAINTEXT on the disk.")
+	fmt.Println("THIS IS OBVIOUSLY NOT SECURE AT ALL FOR PRODUCTION!")
+	fmt.Println("Only ever use non-enclave mode for testing, please...")
+	if err := os.MkdirAll(path.Join(hostPath(config.DataPath), core.PersistenceDir), 0700); err != nil && !os.IsExist(err) {
+		panic(err)
+	}
+
 	run(config, *runAsMarble, internalPath, "127.0.0.1")
 }
 
@@ -63,4 +74,8 @@ func (runtime) GetRemoteReport(reportData []byte) ([]byte, error) {
 
 func (runtime) GetProductSealKey() ([]byte, error) {
 	return make([]byte, 16), nil
+}
+
+func (runtime) IsEnclave() bool {
+	return false
 }

@@ -1,9 +1,6 @@
 package main
 
 import (
-	"encoding/hex"
-	"os"
-
 	"github.com/edgelesssys/edb/edb/core"
 	"github.com/edgelesssys/edb/edb/db"
 	"github.com/edgelesssys/edb/edb/server"
@@ -16,17 +13,8 @@ func run(cfg core.Config, isMarble bool, internalPath string, internalAddress st
 	}
 
 	var rt runtime
+	core := core.NewCore(cfg, rt, db, isMarble)
 
-	// set product key as erocks masterkey
-	key, err := rt.GetProductSealKey()
-	if err != nil {
-		panic(err)
-	}
-	if err := os.Setenv("EROCKSDB_MASTERKEY", hex.EncodeToString(key)); err != nil {
-		panic(err)
-	}
-
-	core := core.NewCore(rt, db, isMarble)
 	mux := server.CreateServeMux(core)
 	if err := core.StartDatabase(); err != nil {
 		panic(err)

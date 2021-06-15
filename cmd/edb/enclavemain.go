@@ -5,6 +5,7 @@ package main
 import (
 	"flag"
 	"os"
+	"path"
 	"path/filepath"
 	"syscall"
 
@@ -60,6 +61,17 @@ func main() {
 	if err := syscall.Mount(filepath.Join(absDataPath, "#rocksdb"), "/data/#rocksdb", "oe_host_file_system", 0, ""); err != nil {
 		panic(err)
 	}
+
+	// Create to store sealing key
+	if !*runAsMarble {
+		if err := syscall.Mount(filepath.Join(absDataPath, core.PersistenceDir), filepath.Join("/data", core.PersistenceDir), "oe_host_file_system", 0, ""); err != nil {
+			panic(err)
+		}
+		if err := os.Mkdir(path.Join(hostPath(absDataPath), core.PersistenceDir), 0700); err != nil && !os.IsExist(err) {
+			panic(err)
+		}
+	}
+
 	config.DataPath = "/data"
 
 	run(config, *runAsMarble, internalPath, "255.0.0.1")
@@ -90,4 +102,8 @@ func (runtime) GetRemoteReport(reportData []byte) ([]byte, error) {
 func (runtime) GetProductSealKey() ([]byte, error) {
 	key, _, err := enclave.GetProductSealKey()
 	return key, err
+}
+
+func (runtime) IsEnclave() bool {
+	return true
 }

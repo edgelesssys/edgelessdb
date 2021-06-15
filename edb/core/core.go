@@ -23,6 +23,7 @@ import (
 
 // Core implements the core logic of EDB.
 type Core struct {
+	cfg      Config
 	rt       rt.Runtime
 	db       db.Database
 	mutex    sync.Mutex
@@ -31,8 +32,8 @@ type Core struct {
 }
 
 // NewCore creates a new Core object.
-func NewCore(rt rt.Runtime, db db.Database, isMarble bool) *Core {
-	return &Core{rt: rt, db: db, isMarble: isMarble}
+func NewCore(cfg Config, rt rt.Runtime, db db.Database, isMarble bool) *Core {
+	return &Core{cfg: cfg, rt: rt, db: db, isMarble: isMarble}
 }
 
 // GetManifestSignature returns the signature of the manifest that has been used to initialize the database.
@@ -68,12 +69,18 @@ func (c *Core) GetTLSConfig() *tls.Config {
 
 // Initialize sets up a database according to the jsonManifest.
 func (c *Core) Initialize(jsonManifest []byte) ([]byte, error) {
+	// Initialize master key
+	masterKey, err := c.initMasterKey()
+	if err != nil {
+		return nil, err
+	}
+
 	// Encrypt recovery key if certificate is provided.
 	var man struct{ Recovery string }
 	if err := json.Unmarshal(jsonManifest, &man); err != nil {
 		return nil, err
 	}
-	recoveryKey, err := c.encryptRecoveryKey(man.Recovery)
+	recoveryKey, err := c.encryptRecoveryKey(masterKey, man.Recovery)
 	if err != nil {
 		return nil, err
 	}
@@ -96,13 +103,19 @@ func (c *Core) Initialize(jsonManifest []byte) ([]byte, error) {
 
 // StartDatabase starts the database.
 func (c *Core) StartDatabase() error {
+	// Initialize master key
+	_, err := c.initMasterKey()
+	if err != nil {
+		return err
+	}
+
+	// Start MariaDB
 	if err := c.db.Start(); err != nil {
 		return err
 	}
 
 	cert, _ := c.db.GetCertificate()
 	hash := sha256.Sum256(cert)
-	var err error
 	c.report, err = c.rt.GetRemoteReport(hash[:])
 	if err != nil {
 		fmt.Printf("Failed to get quote: %v\n", err)
@@ -152,7 +165,7 @@ func (c *Core) getConfigForClient(chi *tls.ClientHelloInfo) (*tls.Config, error)
 	}, nil
 }
 
-func (c *Core) encryptRecoveryKey(cert string) ([]byte, error) {
+func (c *Core) encryptRecoveryKey(key []byte, cert string) ([]byte, error) {
 	if len(cert) <= 0 {
 		return nil, nil
 	}
@@ -172,12 +185,7 @@ func (c *Core) encryptRecoveryKey(cert string) ([]byte, error) {
 		return nil, errors.New("failed to get RSA key from recovery certificate")
 	}
 
-	sealKey, err := c.rt.GetProductSealKey()
-	if err != nil {
-		return nil, err
-	}
-
-	recoveryKey, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, rsaKey, sealKey, nil)
+	recoveryKey, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, rsaKey, key, nil)
 	if err != nil {
 		return nil, err
 	}
