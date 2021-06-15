@@ -2,6 +2,9 @@ package rt
 
 // Runtime is an enclave runtime.
 type Runtime interface {
+	// IsEnclave tells the application if it is running in an enclave or not.
+	IsEnclave() bool
+
 	// GetRemoteReport gets a report signed by the enclave platform for use in remote attestation.
 	GetRemoteReport(reportData []byte) ([]byte, error)
 
