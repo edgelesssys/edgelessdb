@@ -1,0 +1,10 @@
+{
+    "sql": [
+        "CREATE USER reader REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Reader'",
+        "CREATE USER writer REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Writer'",
+        "CREATE DATABASE test",
+        "CREATE TABLE test.data (i INT)",
+        "GRANT SELECT ON test.data TO reader",
+        "GRANT INSERT ON test.data TO writer"
+    ]
+}
