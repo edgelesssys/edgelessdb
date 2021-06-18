@@ -4,6 +4,7 @@ import (
 	"github.com/edgelesssys/edb/edb/core"
 	"github.com/edgelesssys/edb/edb/db"
 	"github.com/edgelesssys/edb/edb/server"
+	"github.com/spf13/afero"
 )
 
 func run(cfg core.Config, isMarble bool, internalPath string, internalAddress string) {
@@ -13,11 +14,14 @@ func run(cfg core.Config, isMarble bool, internalPath string, internalAddress st
 	}
 
 	var rt runtime
-	core := core.NewCore(cfg, rt, db, isMarble)
+	fs := afero.Afero{Fs: afero.NewOsFs()}
+	core := core.NewCore(cfg, rt, db, fs, isMarble)
 
 	mux := server.CreateServeMux(core)
-	if err := core.StartDatabase(); err != nil {
-		panic(err)
+	if !core.IsRecovering() {
+		if err := core.StartDatabase(); err != nil {
+			panic(err)
+		}
 	}
 	server.RunServer(mux, cfg.APIAddress, core.GetTLSConfig())
 }

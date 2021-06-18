@@ -12,13 +12,14 @@ import (
 
 	"github.com/edgelesssys/edb/edb/db"
 	"github.com/edgelesssys/edb/edb/rt"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestInitialize(t *testing.T) {
 	assert := assert.New(t)
 	cert, key := createMockCertificate()
-	core := newCoreWithMocks()
+	core, _ := newCoreWithMocks()
 
 	assert.NoError(core.StartDatabase())
 
@@ -36,14 +37,14 @@ func TestInitialize(t *testing.T) {
 	assert.NotNil(encRecKey)
 	recKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, encRecKey, nil)
 	assert.NoError(err)
-	assert.Equal([]byte{3, 4, 5}, recKey)
+	assert.Equal(core.masterKey, recKey)
 
 	assert.Nil(core.GetManifestSignature())
 }
 
 func TestGetCertificateReport(t *testing.T) {
 	assert := assert.New(t)
-	core := newCoreWithMocks()
+	core, _ := newCoreWithMocks()
 
 	assert.NoError(core.StartDatabase())
 
@@ -55,19 +56,26 @@ func TestGetCertificateReport(t *testing.T) {
 func TestEncryptRecoveryKey(t *testing.T) {
 	assert := assert.New(t)
 	cert, key := createMockCertificate()
-	core := newCoreWithMocks()
+	core, _ := newCoreWithMocks()
+	mockKey := []byte{3, 4, 5}
 
-	encRecKey, err := core.encryptRecoveryKey(cert)
+	encRecKey, err := core.encryptRecoveryKey(mockKey, cert)
 	assert.NoError(err)
 	recKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, encRecKey, nil)
 	assert.NoError(err)
-	assert.Equal([]byte{3, 4, 5}, recKey)
+	assert.Equal(mockKey, recKey)
 }
 
-func newCoreWithMocks() *Core {
+func newCoreWithMocks() (*Core, string) {
 	rt := rt.RuntimeMock{}
 	db := db.DatabaseMock{}
-	return NewCore(&rt, &db, false)
+	fs := afero.Afero{Fs: afero.NewMemMapFs()}
+	tempPath, err := fs.TempDir("", "")
+	if err != nil {
+		panic(err)
+	}
+	cfg := Config{DataPath: tempPath}
+	return NewCore(cfg, &rt, &db, fs, false), tempPath
 }
 
 func createMockCertificate() (string, *rsa.PrivateKey) {

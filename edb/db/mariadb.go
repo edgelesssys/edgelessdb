@@ -51,7 +51,6 @@ type Mariadbd interface {
 type Mariadb struct {
 	internalPath, externalPath       string
 	internalAddress, externalAddress string
-	certificateCommonName            string
 	debug                            bool
 	debugLogDir                      string
 	mariadbd                         Mariadbd
@@ -68,17 +67,18 @@ func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, ce
 	if err := os.MkdirAll(externalPath, 0700); err != nil {
 		return nil, err
 	}
-	return &Mariadb{
-		internalPath:          internalPath,
-		externalPath:          externalPath,
-		internalAddress:       internalAddress,
-		externalAddress:       externalAddress,
-		certificateCommonName: certificateCommonName,
-		debug:                 debug,
-		debugLogDir:           logDir,
-		mariadbd:              mariadbd,
-		log:                   log.New(os.Stdout, "[EDB] ", log.LstdFlags),
-	}, nil
+	d := &Mariadb{
+		internalPath:    internalPath,
+		externalPath:    externalPath,
+		internalAddress: internalAddress,
+		externalAddress: externalAddress,
+		debug:           debug,
+		debugLogDir:     logDir,
+		mariadbd:        mariadbd,
+		log:             log.New(os.Stdout, "[EDB] ", log.LstdFlags),
+	}
+	d.cert, d.key = createCertificate(certificateCommonName)
+	return d, nil
 }
 
 // GetCertificate gets the database certificate.
@@ -144,7 +144,6 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 func (d *Mariadb) Start() error {
 	_, err := os.Stat(filepath.Join(d.externalPath, "#rocksdb"))
 	if os.IsNotExist(err) {
-		d.cert, d.key = createCertificate(d.certificateCommonName)
 		d.log.Println("DB has not been initialized, waiting for manifest.")
 		return nil
 	}

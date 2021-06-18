@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"crypto"
 	"crypto/rand"
 	"crypto/rsa"
@@ -19,21 +20,55 @@ import (
 
 	"github.com/edgelesssys/edb/edb/db"
 	"github.com/edgelesssys/edb/edb/rt"
+	"github.com/spf13/afero"
 )
 
 // Core implements the core logic of EDB.
 type Core struct {
-	cfg      Config
-	rt       rt.Runtime
-	db       db.Database
-	mutex    sync.Mutex
-	report   []byte
-	isMarble bool
+	state     state
+	cfg       Config
+	rt        rt.Runtime
+	db        db.Database
+	fs        afero.Afero
+	mutex     sync.Mutex
+	report    []byte
+	isMarble  bool
+	masterKey []byte
+}
+
+// The sequence of states EDB may be in
+type state int
+
+const (
+	stateUninitialized state = iota
+	stateRecovery
+	stateInitialized
+	stateMax
+)
+
+// Needs to be paired with `defer c.mux.Unlock()`
+func (c *Core) requireState(states ...state) error {
+	c.mutex.Lock()
+	for _, s := range states {
+		if s == c.state {
+			return nil
+		}
+	}
+	return errors.New("edb is not in expected state")
+}
+
+func (c *Core) advanceState(newState state) {
+	if !(c.state < newState && newState < stateMax) {
+		panic(fmt.Errorf("cannot advance from %d to %d", c.state, newState))
+	}
+	c.state = newState
 }
 
 // NewCore creates a new Core object.
-func NewCore(cfg Config, rt rt.Runtime, db db.Database, isMarble bool) *Core {
-	return &Core{cfg: cfg, rt: rt, db: db, isMarble: isMarble}
+func NewCore(cfg Config, rt rt.Runtime, db db.Database, fs afero.Afero, isMarble bool) *Core {
+	c := &Core{state: stateUninitialized, cfg: cfg, rt: rt, fs: fs, db: db, isMarble: isMarble}
+	c.mustInitMasterKey()
+	return c
 }
 
 // GetManifestSignature returns the signature of the manifest that has been used to initialize the database.
@@ -69,18 +104,12 @@ func (c *Core) GetTLSConfig() *tls.Config {
 
 // Initialize sets up a database according to the jsonManifest.
 func (c *Core) Initialize(jsonManifest []byte) ([]byte, error) {
-	// Initialize master key
-	masterKey, err := c.initMasterKey()
-	if err != nil {
-		return nil, err
-	}
-
 	// Encrypt recovery key if certificate is provided.
 	var man struct{ Recovery string }
 	if err := json.Unmarshal(jsonManifest, &man); err != nil {
 		return nil, err
 	}
-	recoveryKey, err := c.encryptRecoveryKey(masterKey, man.Recovery)
+	recoveryKey, err := c.encryptRecoveryKey(c.masterKey, man.Recovery)
 	if err != nil {
 		return nil, err
 	}
@@ -97,18 +126,32 @@ func (c *Core) Initialize(jsonManifest []byte) ([]byte, error) {
 		time.Sleep(time.Second)
 		c.rt.RestartHostProcess()
 	}()
-
 	return recoveryKey, nil
+}
+
+// IsRecovering returns if edb (in standalone mode) is in recovery mode, or if it's not.
+func (c *Core) IsRecovering() bool {
+	defer c.mutex.Unlock()
+	return c.requireState(stateRecovery) == nil
+}
+
+// Recover sets an encryption key (ideally decrypted from the recovery data) and tries to unseal and load a saved state again.
+func (c *Core) Recover(ctx context.Context, key []byte) error {
+	defer c.mutex.Unlock()
+	if err := c.requireState(stateRecovery); err != nil {
+		return err
+	}
+	if err := c.setMasterKey(key); err != nil {
+		return err
+	}
+	if err := c.StartDatabase(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // StartDatabase starts the database.
 func (c *Core) StartDatabase() error {
-	// Initialize master key
-	_, err := c.initMasterKey()
-	if err != nil {
-		return err
-	}
-
 	// Start MariaDB
 	if err := c.db.Start(); err != nil {
 		return err
@@ -116,6 +159,7 @@ func (c *Core) StartDatabase() error {
 
 	cert, _ := c.db.GetCertificate()
 	hash := sha256.Sum256(cert)
+	var err error
 	c.report, err = c.rt.GetRemoteReport(hash[:])
 	if err != nil {
 		fmt.Printf("Failed to get quote: %v\n", err)

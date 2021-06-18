@@ -12,6 +12,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"database/sql"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"encoding/pem"
@@ -104,7 +105,7 @@ func TestReaderWriter(t *testing.T) {
 		"CREATE TABLE test.data (i INT)",
 		"GRANT SELECT ON test.data TO reader",
 		"GRANT INSERT ON test.data TO writer",
-	}, false)
+	}, false, "")
 
 	setConfig(false, "")
 	defer cleanupConfig()
@@ -115,7 +116,8 @@ func TestReaderWriter(t *testing.T) {
 	// Owner
 	{
 		serverCert := getServerCertificate()
-		assert.Nil(postManifest(serverCert, manifest, true))
+		_, err := postManifest(serverCert, manifest, true)
+		assert.NoError(err)
 	}
 
 	// Writer
@@ -157,7 +159,7 @@ func TestPersistence(t *testing.T) {
 		"CREATE DATABASE test",
 		"CREATE TABLE test.data (i INT)",
 		"GRANT ALL ON test.data TO usr",
-	}, false)
+	}, false, "")
 
 	setConfig(false, "")
 	defer cleanupConfig()
@@ -166,10 +168,11 @@ func TestPersistence(t *testing.T) {
 	assert.NotNil(process)
 
 	serverCert := getServerCertificate()
-	assert.Nil(postManifest(serverCert, manifest, true))
+	_, err := postManifest(serverCert, manifest, true)
+	assert.Nil(err)
 
 	db := sqlOpen("usr", usrCert, usrKey, serverCert)
-	_, err := db.Exec("INSERT INTO test.data VALUES (2)")
+	_, err = db.Exec("INSERT INTO test.data VALUES (2)")
 	db.Close()
 	assert.Nil(err)
 
@@ -206,14 +209,16 @@ func TestInvalidQueryInManifest(t *testing.T) {
 
 	serverCert := getServerCertificate()
 
-	assert.NotNil(postManifest(serverCert, createManifest("", []string{
+	_, err := postManifest(serverCert, createManifest("", []string{
 		"CREATE TABL test.data (i INT)",
-	}, false), true))
+	}, false, ""), true)
+	assert.Error(err)
 
 	// DB cannot be initialized after failed attempt
-	assert.NotNil(postManifest(serverCert, createManifest("", []string{
+	_, err = postManifest(serverCert, createManifest("", []string{
 		"CREATE TABLE test.data (i INT)",
-	}, false), true))
+	}, false, ""), true)
+	assert.Error(err)
 
 	assert.Nil(process.Kill())
 
@@ -284,9 +289,10 @@ func TestLoggingDebug(t *testing.T) {
 
 	serverCert := getServerCertificate()
 
-	assert.Nil(postManifest(serverCert, createManifest("", []string{
+	_, err = postManifest(serverCert, createManifest("", []string{
 		"CREATE TABLE test.data (i INT)",
-	}, true), true))
+	}, true, ""), true)
+	assert.Nil(err)
 
 	assert.Nil(process.Kill())
 
@@ -315,9 +321,10 @@ func TestLoggingNoDebug(t *testing.T) {
 
 	serverCert := getServerCertificate()
 
-	assert.Nil(postManifest(serverCert, createManifest("", []string{
+	_, err = postManifest(serverCert, createManifest("", []string{
 		"CREATE TABLE test.data (i INT)",
-	}, true), true))
+	}, true, ""), true)
+	assert.Nil(err)
 
 	assert.Nil(process.Kill())
 
@@ -341,14 +348,16 @@ func TestLoggingDebugStderr(t *testing.T) {
 
 	setConfig(true, "")
 	defer cleanupConfig()
+
 	process := startEDB("")
 	assert.NotNil(process)
 
 	serverCert := getServerCertificate()
 
-	assert.Nil(postManifest(serverCert, createManifest("", []string{
+	_, err = postManifest(serverCert, createManifest("", []string{
 		"CREATE TABLE test.data (i INT)",
-	}, true), true))
+	}, true, ""), true)
+	assert.Nil(err)
 
 	assert.Nil(process.Kill())
 
@@ -376,17 +385,88 @@ func TestLoggingNotSetInManifest(t *testing.T) {
 	// starting EDB
 	cmd := createEdbCmd("")
 	require.NoError(cmd.Start())
+	defer cmd.Process.Kill()
 
 	log.Println("EDB starting ...")
 	waitForEDB(cmd)
 
 	serverCert := getServerCertificate()
 
-	assert.NotNil(postManifest(serverCert, createManifest("", []string{
+	_, err = postManifest(serverCert, createManifest("", []string{
 		"CREATE TABLE test.data (i INT)",
-	}, false), false))
+	}, false, ""), false)
+	assert.NotNil(err)
 
 	assert.Error(cmd.Wait())
+}
+
+func TestRecovery(t *testing.T) {
+	assert := assert.New(t)
+
+	caCertPem, caKeyPem := createCertificate("ca", "", "")
+	usrCertPem, usrKeyPem := createCertificate("usr", caCertPem, caKeyPem)
+
+	manifest := createManifest(caCertPem, []string{
+		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
+		"CREATE DATABASE test",
+		"CREATE TABLE test.data (i INT)",
+		"GRANT ALL ON test.data TO usr",
+	}, false, usrCertPem)
+
+	setConfig(false, "")
+	defer cleanupConfig()
+
+	process := startEDB("")
+	assert.NotNil(process)
+
+	serverCert := getServerCertificate()
+
+	recoveryKeyEncB64, err := postManifest(serverCert, manifest, true)
+	assert.NoError(err)
+	recoveryKeyEnc, err := base64.StdEncoding.DecodeString(string(recoveryKeyEncB64))
+	assert.NoError(err)
+	initialSig := getManifestSignature(serverCert)
+
+	db := sqlOpen("usr", usrCertPem, usrKeyPem, serverCert)
+	_, err = db.Exec("INSERT INTO test.data VALUES (2)")
+	db.Close()
+	assert.NoError(err)
+
+	assert.NoError(process.Kill())
+
+	// Delete master key
+	dataPath := os.Getenv(core.EnvDataPath)
+	ioutil.WriteFile(filepath.Join(dataPath, "edb-persistence/sealed_key"), []byte{1, 2, 3}, 0600)
+
+	// edb should start and go into recovery mode
+	process = startEDB("")
+	assert.NotNil(process)
+	defer process.Kill()
+
+	newServerCert := getServerCertificate()
+	sig := getManifestSignature(newServerCert)
+	assert.Empty(sig)
+
+	// Post recovery key
+	usrKeyDer, _ := pem.Decode([]byte(usrKeyPem))
+	parsedKey, err := x509.ParsePKCS8PrivateKey(usrKeyDer.Bytes)
+	assert.NoError(err)
+	usrKey, ok := parsedKey.(*rsa.PrivateKey)
+	assert.True(ok)
+	recoveryKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, usrKey, recoveryKeyEnc, nil)
+	assert.NoError(err)
+	postRecoveryKey(newServerCert, recoveryKey)
+
+	// Check that we recovered successfully
+	sig = getManifestSignature(serverCert)
+	assert.NotEmpty(sig)
+	assert.Equal(initialSig, sig)
+
+	var val float64
+	db = sqlOpen("usr", usrCertPem, usrKeyPem, serverCert)
+	assert.Nil(db.QueryRow("SELECT i FROM test.data").Scan(&val))
+	db.Close()
+	assert.Equal(2., val)
 }
 
 func setConfig(debug bool, logDir string) {
@@ -529,12 +609,13 @@ func getServerCertificate() string {
 	return string(pem.EncodeToMemory(blocks[0]))
 }
 
-func createManifest(ca string, sql []string, debug bool) []byte {
+func createManifest(ca string, sql []string, debug bool, recovery string) []byte {
 	manifest := struct {
-		SQL   []string
-		CA    string
-		Debug bool
-	}{sql, ca, debug}
+		SQL      []string
+		CA       string
+		Debug    bool
+		Recovery string
+	}{sql, ca, debug, recovery}
 	jsonManifest, err := json.Marshal(manifest)
 	if err != nil {
 		panic(err)
@@ -566,7 +647,7 @@ func getManifestSignature(serverCert string) string {
 	return string(body)
 }
 
-func postManifest(serverCert string, manifest []byte, waitForRestart bool) error {
+func postManifest(serverCert string, manifest []byte, waitForRestart bool) ([]byte, error) {
 	client := createHttpClient(serverCert)
 	url := url.URL{Scheme: "https", Host: addrAPI, Path: "manifest"}
 
@@ -575,17 +656,18 @@ func postManifest(serverCert string, manifest []byte, waitForRestart bool) error
 	if err != nil {
 		panic(err)
 	}
-	errMessage, err := ioutil.ReadAll(resp.Body)
+	body, err := ioutil.ReadAll(resp.Body)
 	resp.Body.Close()
 	if err != nil {
-		return errors.New(resp.Status)
+		return nil, errors.New(resp.Status)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return errors.New(string(errMessage))
+		return nil, errors.New(string(body))
 	}
+	recoveryKey := body
 
 	if !waitForRestart {
-		return nil
+		return nil, nil
 	}
 
 	// wait until edb restarted
@@ -605,10 +687,30 @@ func postManifest(serverCert string, manifest []byte, waitForRestart bool) error
 			}
 			if len(body) > 0 {
 				log.Print("restarted successfully")
-				return nil
+				return recoveryKey, nil
 			}
 		}
 	}
+}
+
+func postRecoveryKey(serverCert string, key []byte) error {
+	client := createHttpClient(serverCert)
+	url := url.URL{Scheme: "https", Host: addrAPI, Path: "recovery"}
+
+	log.Print("posting recovery key ...")
+	resp, err := client.Post(url.String(), "", bytes.NewReader(key))
+	if err != nil {
+		panic(err)
+	}
+	body, err := ioutil.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return errors.New(resp.Status)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return errors.New(string(body))
+	}
+	return nil
 }
 
 func createHttpClient(serverCert string) http.Client {
@@ -679,6 +781,6 @@ type marbleServer struct {
 
 func (m marbleServer) Activate(context.Context, *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	return &rpc.ActivationResp{Parameters: &rpc.Parameters{
-		Env: map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir},
+		Env: map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir, core.ERocksDBMasterKeyVar: "414243"},
 	}}, nil
 }

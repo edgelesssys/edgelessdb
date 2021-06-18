@@ -49,7 +49,8 @@ func CreateServeMux(core *core.Core) *http.ServeMux {
 	})
 
 	mux.HandleFunc("/signature", func(w http.ResponseWriter, r *http.Request) {
-		io.WriteString(w, hex.EncodeToString(core.GetManifestSignature()))
+		sig := core.GetManifestSignature()
+		io.WriteString(w, hex.EncodeToString(sig))
 	})
 
 	mux.HandleFunc("/quote", func(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +60,25 @@ func CreateServeMux(core *core.Core) *http.ServeMux {
 			return
 		}
 		writeJSON(w, certQuoteResp{cert, report})
+	})
+
+	mux.HandleFunc("/recovery", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodPost {
+			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
+			return
+		}
+		key, err := ioutil.ReadAll(r.Body)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		var statusMsg string
+		if err := core.Recover(r.Context(), key); err != nil {
+			statusMsg = fmt.Sprintf("Recovery failed: %v", err.Error())
+		} else {
+			statusMsg = "Recovery successful."
+		}
+		writeJSON(w, statusMsg)
 	})
 
 	return mux
