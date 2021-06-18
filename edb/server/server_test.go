@@ -10,12 +10,15 @@ import (
 	"math/big"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/edgelesssys/edb/edb/core"
 	"github.com/edgelesssys/edb/edb/db"
 	"github.com/edgelesssys/edb/edb/rt"
+	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -31,9 +34,8 @@ func TestManifest(t *testing.T) {
 			"ca": "cert"
 		}`
 
-	rt := rt.RuntimeMock{}
-	db := db.DatabaseMock{}
-	core := core.NewCore(&rt, &db, false)
+	core, db, _, _ := newCoreWithMocks()
+	defer os.Unsetenv("EROCKSDB_MASTERKEY")
 	mux := CreateServeMux(core)
 
 	req := httptest.NewRequest("POST", "/manifest", strings.NewReader(jsonManifest))
@@ -55,9 +57,8 @@ func TestManifestRecovery(t *testing.T) {
 			"recovery": "` + strings.ReplaceAll(cert, "\n", "\\n") + `"
 		}`
 
-	rt := rt.RuntimeMock{}
-	db := db.DatabaseMock{}
-	core := core.NewCore(&rt, &db, false)
+	core, _, fs, tempPath := newCoreWithMocks()
+	defer os.Unsetenv("EROCKSDB_MASTERKEY")
 	mux := CreateServeMux(core)
 
 	req := httptest.NewRequest("POST", "/manifest", strings.NewReader(jsonManifest))
@@ -66,11 +67,15 @@ func TestManifestRecovery(t *testing.T) {
 	assert.Equal(http.StatusOK, resp.Code)
 
 	ciphertext, err := base64.StdEncoding.DecodeString(resp.Body.String())
-	assert.Nil(err)
+	assert.NoError(err)
 
 	plaintext, err := rsa.DecryptOAEP(sha256.New(), nil, key, ciphertext, nil)
-	assert.Nil(err)
-	assert.Equal([]byte{3, 4, 5}, plaintext)
+	assert.NoError(err)
+
+	// Get master key from encrypted file
+	sealedKey, err := fs.ReadFile(filepath.Join(tempPath, "edb-persistence", "sealed_key"))
+	assert.NoError(err)
+	assert.Equal(sealedKey, plaintext)
 }
 
 func createCertificate() (string, *rsa.PrivateKey) {
@@ -81,4 +86,16 @@ func createCertificate() (string, *rsa.PrivateKey) {
 	cert, _ := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
 	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
 	return string(pemCert), priv
+}
+
+func newCoreWithMocks() (*core.Core, *db.DatabaseMock, afero.Afero, string) {
+	rt := rt.RuntimeMock{}
+	db := db.DatabaseMock{}
+	fs := afero.Afero{Fs: afero.NewMemMapFs()}
+	tempPath, err := fs.TempDir("", "")
+	if err != nil {
+		panic(err)
+	}
+	cfg := core.Config{DataPath: tempPath}
+	return core.NewCore(cfg, &rt, &db, fs, false), &db, fs, tempPath
 }
