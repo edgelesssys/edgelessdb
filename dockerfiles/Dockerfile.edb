@@ -15,7 +15,7 @@ FROM ghcr.io/edgelesssys/edgelessrt-deploy:nightly AS release
 LABEL description="edb"
 COPY --from=build /mariadb/build/edb-enclave.signed /
 COPY --from=build /mariadb/build/edb /
-ENTRYPOINT ["erthost", "edb-enclave.signed"]
+ENTRYPOINT ["edb"]
 
 # Expose ports.
 EXPOSE 3306
