@@ -7,8 +7,8 @@ RUN apt update && apt install -y libncurses5-dev libcurl4-openssl-dev bison libl
 COPY --from=pull /mariadb /mariadb
 # build edb
 WORKDIR /mariadb/build
-RUN cmake ..
-RUN --mount=type=secret,id=signingkey,dst=/mariadb/build/private.pem,required=true make
+RUN cmake -DCMAKE_BUILD_TYPE=RelWithDebInfo ..
+RUN --mount=type=secret,id=signingkey,dst=/mariadb/build/private.pem,required=true make -j`nproc`
 
 
 FROM ghcr.io/edgelesssys/edgelessrt-deploy:nightly AS release
