@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:experimental
+FROM alpine/git:latest AS pull
+RUN --mount=type=secret,id=repoaccess,dst=/root/.netrc,required=true git clone --recurse-submodule https://github.com/edgelesssys/edb.git /mariadb
+
+FROM ghcr.io/edgelesssys/edgelessrt-dev:nightly AS build
+RUN apt update && apt install -y libncurses5-dev libcurl4-openssl-dev bison liblz4-dev bbe
+COPY --from=pull /mariadb /mariadb
+# build emariadb
+WORKDIR /mariadb/build
+RUN cmake ..
+RUN --mount=type=secret,id=signingkey,dst=/mariadb/build/private.pem,required=true make
+RUN --mount=type=secret,id=signingkey,dst=/mariadb/build/private.pem,required=true make emariadbd
+# install
+WORKDIR /mariadb
+COPY ./my.cnf /etc/
+RUN mkdir -p /opt/mysql && build/mariadb/scripts/mysql_install_db --srcdir=3rdparty/mariadb --ldata=/opt/mysql/data --defaults-file=/etc/my.cnf --user=root --auth-root-authentication-method=normal
+
+
+FROM ghcr.io/edgelesssys/edgelessrt-deploy:nightly AS release
+LABEL description="emariadbd"
+COPY --from=build /mariadb/build/emariadbd.signed /
+COPY --from=build /mariadb/build/emariadbd /
+COPY --from=build /opt/mysql /opt/mysql
+COPY ./my.cnf /etc/
+ENTRYPOINT ["erthost", "emariadbd.signed", "--user=root"]
+
+# Expose ports.
+EXPOSE 3306

@@ -28,3 +28,17 @@ make emariadbd
 mariadb/scripts/mysql_install_db --srcdir=../3rdparty/mariadb --auth-root-authentication-method=normal
 erthost emariadbd.signed --datadir=./data --default-storage-engine=rocksdb
 ```
+
+## Docker images
+
+### Build
+
+```sh
+docker buildx build --secret id=signingkey,src=$HOME/private.pem --secret id=repoaccess,src=$HOME/.netrc --tag ghcr.io/edgelesssys/edb/edb -f dockerfiles/Dockerfile.edb .
+```
+
+### Run
+
+```sh
+docker run -p3306:3306 -p8080:8080 -it ghcr.io/edgelesssys/edb/edb
+```
