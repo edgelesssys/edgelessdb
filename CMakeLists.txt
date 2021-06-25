@@ -99,6 +99,7 @@ else ()
     URL ${CMAKE_SOURCE_DIR}/3rdparty/mariadb
     SOURCE_DIR mariadb-src
     PATCH_COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb.patch
+    COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/rocksdb.patch
     COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb-frm-files.patch
     COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb-rocksdb-logging.patch
     BINARY_DIR mariadb
