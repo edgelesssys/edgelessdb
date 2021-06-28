@@ -12,7 +12,7 @@ ERT_STUB(mallinfo, 0)
 ERT_STUB_SILENT(pthread_setname_np, 0)
 ERT_STUB(pthread_yield, -1)
 ERT_STUB(setcontext, -1)
-ERT_STUB(__fdelt_chk, -1)  // disable fortify
+ERT_STUB(__fdelt_chk, 0)
 
 // musl implements POSIX which returns int, but we
 // compile mariadb with glibc which returns char*
