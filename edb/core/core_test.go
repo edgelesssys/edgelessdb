@@ -6,7 +6,6 @@ import (
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/pem"
-	"math/big"
 	"strings"
 	"testing"
 
@@ -14,11 +13,15 @@ import (
 	"github.com/edgelesssys/edb/edb/rt"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInitialize(t *testing.T) {
 	assert := assert.New(t)
-	cert, key := createMockCertificate()
+	require := require.New(t)
+
+	pemKey, key, err := createMockRecoveryKey()
+	require.NoError(err)
 	core, _ := newCoreWithMocks()
 
 	assert.NoError(core.StartDatabase())
@@ -30,7 +33,7 @@ func TestInitialize(t *testing.T) {
 			"statement2"
 		],
 		"ca": "cert",
-		"recovery": "` + strings.ReplaceAll(cert, "\n", "\\n") + `"
+		"recovery": "` + strings.ReplaceAll(pemKey, "\n", "\\n") + `"
 	}`
 	encRecKey, err := core.Initialize([]byte(jsonManifest))
 	assert.NoError(err)
@@ -55,11 +58,14 @@ func TestGetCertificateReport(t *testing.T) {
 
 func TestEncryptRecoveryKey(t *testing.T) {
 	assert := assert.New(t)
-	cert, key := createMockCertificate()
+	require := require.New(t)
+
+	pemKey, key, err := createMockRecoveryKey()
+	require.NoError(err)
 	core, _ := newCoreWithMocks()
 	mockKey := []byte{3, 4, 5}
 
-	encRecKey, err := core.encryptRecoveryKey(mockKey, cert)
+	encRecKey, err := core.encryptRecoveryKey(mockKey, pemKey)
 	assert.NoError(err)
 	recKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, key, encRecKey, nil)
 	assert.NoError(err)
@@ -78,12 +84,15 @@ func newCoreWithMocks() (*Core, string) {
 	return NewCore(cfg, &rt, &db, fs, false), tempPath
 }
 
-func createMockCertificate() (string, *rsa.PrivateKey) {
-	template := &x509.Certificate{
-		SerialNumber: &big.Int{},
+func createMockRecoveryKey() (string, *rsa.PrivateKey, error) {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", nil, err
 	}
-	priv, _ := rsa.GenerateKey(rand.Reader, 2048)
-	cert, _ := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
-	return string(pemCert), priv
+	pubPKIX, err := x509.MarshalPKIXPublicKey(priv.Public())
+	if err != nil {
+		return "", nil, err
+	}
+	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubPKIX})
+	return string(pemKey), priv, nil
 }

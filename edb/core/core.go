@@ -212,24 +212,24 @@ func (c *Core) getConfigForClient(chi *tls.ClientHelloInfo) (*tls.Config, error)
 	}, nil
 }
 
-func (c *Core) encryptRecoveryKey(key []byte, cert string) ([]byte, error) {
-	if len(cert) <= 0 {
+func (c *Core) encryptRecoveryKey(key []byte, recoveryKeyPEM string) ([]byte, error) {
+	if len(recoveryKeyPEM) <= 0 {
 		return nil, nil
 	}
 
-	block, _ := pem.Decode([]byte(cert))
+	block, _ := pem.Decode([]byte(recoveryKeyPEM))
 	if block == nil {
-		return nil, errors.New("failed to decode recovery certificate")
+		return nil, errors.New("failed to decode recovery public key")
 	}
 
-	parsedCert, err := x509.ParseCertificate(block.Bytes)
+	parsedRSAKey, err := x509.ParsePKIXPublicKey(block.Bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	rsaKey, ok := parsedCert.PublicKey.(*rsa.PublicKey)
+	rsaKey, ok := parsedRSAKey.(*rsa.PublicKey)
 	if !ok {
-		return nil, errors.New("failed to get RSA key from recovery certificate")
+		return nil, errors.New("failed to get RSA key from recovery public key")
 	}
 
 	recoveryKey, err := rsa.EncryptOAEP(sha256.New(), rand.Reader, rsaKey, key, nil)
