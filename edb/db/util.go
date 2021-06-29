@@ -2,8 +2,9 @@ package db
 
 import (
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
@@ -58,7 +59,7 @@ func createCertificate(commonName string) ([]byte, crypto.PrivateKey, error) {
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
