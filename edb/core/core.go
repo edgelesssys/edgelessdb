@@ -15,13 +15,13 @@ import (
 	"encoding/pem"
 	"errors"
 	"fmt"
-	"math/big"
 	"net"
 	"sync"
 	"time"
 
 	"github.com/edgelesssys/edb/edb/db"
 	"github.com/edgelesssys/edb/edb/rt"
+	"github.com/edgelesssys/edb/edb/util"
 	"github.com/spf13/afero"
 )
 
@@ -243,8 +243,12 @@ func (c *Core) encryptRecoveryKey(key []byte, recoveryKeyPEM string) ([]byte, er
 }
 
 func createCertificate(hostname string, ips []net.IP, signerCert []byte, signerKey crypto.PrivateKey) ([]byte, crypto.PrivateKey, error) {
+	serialNumber, err := util.GenerateCertificateSerialNumber()
+	if err != nil {
+		return nil, nil, err
+	}
 	template := &x509.Certificate{
-		SerialNumber: &big.Int{},
+		SerialNumber: serialNumber,
 		Subject:      pkix.Name{CommonName: hostname},
 		NotAfter:     time.Now().Add(time.Hour),
 		DNSNames:     []string{hostname},
