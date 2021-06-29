@@ -20,6 +20,7 @@ import (
 	"github.com/edgelesssys/edb/edb/rt"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestManifest(t *testing.T) {
@@ -49,8 +50,10 @@ func TestManifest(t *testing.T) {
 
 func TestManifestRecovery(t *testing.T) {
 	assert := assert.New(t)
+	require := require.New(t)
 
-	cert, key := createCertificate()
+	cert, key, err := createCertificate()
+	require.NoError(err)
 
 	jsonManifest := `
 		{
@@ -78,14 +81,20 @@ func TestManifestRecovery(t *testing.T) {
 	assert.Equal(sealedKey, plaintext)
 }
 
-func createCertificate() (string, *rsa.PrivateKey) {
+func createCertificate() (string, *rsa.PrivateKey, error) {
 	template := &x509.Certificate{
 		SerialNumber: &big.Int{},
 	}
-	priv, _ := rsa.GenerateKey(rand.Reader, 2048)
-	cert, _ := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return "", nil, err
+	}
+	cert, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
+	if err != nil {
+		return "", nil, err
+	}
 	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
-	return string(pemCert), priv
+	return string(pemCert), priv, nil
 }
 
 func newCoreWithMocks() (*core.Core, *db.DatabaseMock, afero.Afero, string) {

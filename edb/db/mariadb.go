@@ -77,7 +77,12 @@ func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, ce
 		mariadbd:        mariadbd,
 		log:             log.New(os.Stdout, "[EDB] ", log.LstdFlags),
 	}
-	d.cert, d.key = createCertificate(certificateCommonName)
+	cert, key, err := createCertificate(certificateCommonName)
+	if err != nil {
+		return nil, err
+	}
+	d.cert = cert
+	d.key = key
 	return d, nil
 }
 

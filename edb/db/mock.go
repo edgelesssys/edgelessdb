@@ -12,7 +12,14 @@ type DatabaseMock struct {
 
 // GetCertificate gets the database certificate.
 func (d *DatabaseMock) GetCertificate() ([]byte, crypto.PrivateKey) {
-	return createCertificate("")
+	cert, priv, err := createCertificate("")
+
+	// The standard interface does not return an error as it just gets the certificate from the core.
+	// Since the mock interface dynamically creates one, we assume this has to succeed otherwise we panic here.
+	if err != nil {
+		panic(err)
+	}
+	return cert, priv
 }
 
 // Initialize sets up a database according to the jsonManifest.

@@ -197,7 +197,10 @@ func (c *Core) getConfigForClient(chi *tls.ClientHelloInfo) (*tls.Config, error)
 		ips = []net.IP{addr.IP}
 	}
 
-	cert, key := createCertificate(hostname, ips, signerCert, signerKey)
+	cert, key, err := createCertificate(hostname, ips, signerCert, signerKey)
+	if err != nil {
+		return nil, err
+	}
 
 	return &tls.Config{
 		Certificates: []tls.Certificate{
@@ -237,8 +240,7 @@ func (c *Core) encryptRecoveryKey(key []byte, cert string) ([]byte, error) {
 	return recoveryKey, nil
 }
 
-func createCertificate(hostname string, ips []net.IP, signerCert []byte, signerKey crypto.PrivateKey) ([]byte, crypto.PrivateKey) {
-	// TODO AB#875 cleanup
+func createCertificate(hostname string, ips []net.IP, signerCert []byte, signerKey crypto.PrivateKey) ([]byte, crypto.PrivateKey, error) {
 	template := &x509.Certificate{
 		SerialNumber: &big.Int{},
 		Subject:      pkix.Name{CommonName: hostname},
@@ -246,8 +248,17 @@ func createCertificate(hostname string, ips []net.IP, signerCert []byte, signerK
 		DNSNames:     []string{hostname},
 		IPAddresses:  ips,
 	}
-	parsedSignerCert, _ := x509.ParseCertificate(signerCert)
-	priv, _ := rsa.GenerateKey(rand.Reader, 2048)
-	cert, _ := x509.CreateCertificate(rand.Reader, template, parsedSignerCert, &priv.PublicKey, signerKey)
-	return cert, priv
+	parsedSignerCert, err := x509.ParseCertificate(signerCert)
+	if err != nil {
+		return nil, nil, err
+	}
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, nil, err
+	}
+	cert, err := x509.CreateCertificate(rand.Reader, template, parsedSignerCert, &priv.PublicKey, signerKey)
+	if err != nil {
+		return nil, nil, err
+	}
+	return cert, priv, nil
 }

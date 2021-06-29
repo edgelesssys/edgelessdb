@@ -49,8 +49,7 @@ func toPEM(cert []byte, key crypto.PrivateKey) (pemCert, pemKey []byte, err erro
 	return
 }
 
-func createCertificate(commonName string) ([]byte, crypto.PrivateKey) {
-	// TODO AB#875 cleanup
+func createCertificate(commonName string) ([]byte, crypto.PrivateKey, error) {
 	template := &x509.Certificate{
 		SerialNumber:          &big.Int{},
 		Subject:               pkix.Name{Organization: []string{"EDB root"}, CommonName: commonName},
@@ -59,7 +58,13 @@ func createCertificate(commonName string) ([]byte, crypto.PrivateKey) {
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
-	priv, _ := rsa.GenerateKey(rand.Reader, 2048)
-	cert, _ := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
-	return cert, priv
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		return nil, nil, err
+	}
+	cert, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
+	if err != nil {
+		return nil, nil, err
+	}
+	return cert, priv, nil
 }
