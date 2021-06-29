@@ -34,6 +34,7 @@ import (
 	"time"
 
 	"github.com/edgelesssys/edb/edb/core"
+	"github.com/edgelesssys/edb/edb/db"
 	"github.com/edgelesssys/era/era"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/go-sql-driver/mysql"
@@ -245,7 +246,7 @@ func TestCurl(t *testing.T) {
 	assert.Nil(exec.Command("curl", "--cacert", certFilename, "https://"+addrAPI+"/signature").Run())
 }
 
-func TestLaunchAsMarble(t *testing.T) {
+func TestMarbleReaderWriter(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -266,6 +267,54 @@ func TestLaunchAsMarble(t *testing.T) {
 	assert.NotNil(process)
 	defer process.Kill()
 	assert.NotEmpty(getServerCertificate())
+
+	// Setup manifest
+	caCert, caKey := createCertificate("Owner CA", "", "")
+	readerCert, readerKey := createCertificate("Reader", caCert, caKey)
+	writerCert, writerKey := createCertificate("Writer", caCert, caKey)
+
+	manifest := createManifest(caCert, []string{
+		"CREATE USER reader REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Reader'",
+		"CREATE USER writer REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Writer'",
+		"CREATE DATABASE test",
+		"CREATE TABLE test.data (i INT)",
+		"GRANT SELECT ON test.data TO reader",
+		"GRANT INSERT ON test.data TO writer",
+	}, false, "")
+
+	// Owner
+	{
+		serverCert := getServerCertificate()
+		_, err := postManifest(serverCert, manifest, true)
+		assert.NoError(err)
+	}
+
+	// Writer
+	{
+		serverCert := getServerCertificate()
+		sig := getManifestSignature(serverCert)
+		assert.Equal(calculateManifestSignature(manifest), sig)
+
+		db := sqlOpen("writer", writerCert, writerKey, serverCert)
+		_, err := db.Exec("INSERT INTO test.data VALUES (2), (6)")
+		db.Close()
+		assert.NoError(err)
+	}
+
+	// Reader
+	{
+		serverCert := getServerCertificate()
+		sig := getManifestSignature(serverCert)
+		assert.Equal(calculateManifestSignature(manifest), sig)
+
+		var avg float64
+		db := sqlOpen("reader", readerCert, readerKey, serverCert)
+		assert.Nil(db.QueryRow("SELECT AVG(i) FROM test.data").Scan(&avg))
+		_, err := db.Exec("INSERT INTO test.data VALUES (3)")
+		db.Close()
+		assert.Error(err)
+		assert.Equal(4., avg)
+	}
 }
 
 func TestLoggingDebug(t *testing.T) {
@@ -573,23 +622,20 @@ func createRecoveryKey() (string, *rsa.PrivateKey) {
 	return string(pemKey), priv
 }
 
-func createCertificate(commonName, signerCert, signerKey string) (cert, key string) {
-	certBytes, priv := generateCertificate(commonName, signerCert, signerKey)
-
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
-	keyBytes, err := x509.MarshalPKCS8PrivateKey(priv)
-	if err != nil {
-		panic(err)
-	}
-	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
-	return string(pemCert), string(pemKey)
+func createCertificate(commonName string, signerCert, signerKey string) (cert, key string) {
+	return toPem(generateCertificate(commonName, []string{"localhost"}, signerCert, signerKey, false))
 }
 
-func generateCertificate(commonName, signerCert, signerKey string) ([]byte, *ecdsa.PrivateKey) {
+func createMarbleSecretCertificate(signerCert, signerKey string) (cert, key string) {
+	return toPem(generateCertificate("localhost", []string{"localhost"}, signerCert, signerKey, true))
+}
+
+func generateCertificate(commonName string, dnsNames []string, signerCert, signerKey string, leafIsCA bool) ([]byte, *ecdsa.PrivateKey) {
 	template := &x509.Certificate{
 		SerialNumber: &big.Int{},
 		Subject:      pkix.Name{CommonName: commonName},
 		NotAfter:     time.Now().Add(time.Hour),
+		DNSNames:     dnsNames,
 	}
 
 	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
@@ -597,10 +643,13 @@ func generateCertificate(commonName, signerCert, signerKey string) ([]byte, *ecd
 		panic(err)
 	}
 
-	var certBytes []byte
-	if signerCert == "" {
+	if signerCert == "" || leafIsCA {
 		template.BasicConstraintsValid = true
 		template.IsCA = true
+	}
+
+	var certBytes []byte
+	if signerCert == "" {
 		certBytes, err = x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
 	} else {
 		signer, errKeyPair := tls.X509KeyPair([]byte(signerCert), []byte(signerKey))
@@ -616,6 +665,16 @@ func generateCertificate(commonName, signerCert, signerKey string) ([]byte, *ecd
 	}
 
 	return certBytes, priv
+}
+
+func toPem(certBytes []byte, priv *ecdsa.PrivateKey) (cert, key string) {
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
+	keyBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		panic(err)
+	}
+	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
+	return string(pemCert), string(pemKey)
 }
 
 func getServerCertificate() string {
@@ -762,7 +821,7 @@ func sqlOpen(user, userCert, userKey, serverCert string) *sql.DB {
 // Marblerun mock functions down below
 func startMockMarblerunCoordinator() (*grpc.Server, string, error) {
 	// Create certificate for the Coordinator
-	certBytes, priv := generateCertificate("Mocked Coordinator", "", "")
+	certBytes, priv := generateCertificate("Mocked Coordinator", []string{"localhost"}, "", "", false)
 	cert := tls.Certificate{Certificate: [][]byte{certBytes}, PrivateKey: priv}
 
 	// Create temp directory for data
@@ -773,7 +832,18 @@ func startMockMarblerunCoordinator() (*grpc.Server, string, error) {
 
 	// Launch mocked gRPC Marblerun server
 	server := grpc.NewServer(grpc.Creds(credentials.NewServerTLSFromCert(&cert)))
-	marbleServer := marbleServer{dataDir: tempDir}
+
+	// Generate root certificate & root key for edb
+	privKeyPKCS8, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		panic(err)
+	}
+
+	rootCertPEM := string(pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes}))
+	privKeyPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyPKCS8}))
+	secertRootCert, secretRootKey := createMarbleSecretCertificate(rootCertPEM, privKeyPEM)
+
+	marbleServer := marbleServer{dataDir: tempDir, secretRootCert: secertRootCert, secretRootKey: secretRootKey}
 	rpc.RegisterMarbleServer(server, marbleServer)
 
 	listener, err := net.Listen("tcp", "localhost:")
@@ -793,11 +863,13 @@ func startMockMarblerunCoordinator() (*grpc.Server, string, error) {
 }
 
 type marbleServer struct {
-	dataDir string
+	dataDir        string
+	secretRootCert string
+	secretRootKey  string
 }
 
 func (m marbleServer) Activate(context.Context, *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	return &rpc.ActivationResp{Parameters: &rpc.Parameters{
-		Env: map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir, core.ERocksDBMasterKeyVar: "414243"},
+		Env: map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir, core.ERocksDBMasterKeyVar: "4142434445464748494a4b4c4d4e4f50", db.EnvRootCertificate: m.secretRootCert, db.EnvRootKey: m.secretRootKey},
 	}}, nil
 }
