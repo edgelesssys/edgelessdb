@@ -9,9 +9,10 @@ import (
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"errors"
-	"math/big"
 	"net"
 	"time"
+
+	"github.com/edgelesssys/edb/edb/util"
 )
 
 func splitHostPort(address, defaultPort string) (host, port string) {
@@ -51,8 +52,12 @@ func toPEM(cert []byte, key crypto.PrivateKey) (pemCert, pemKey []byte, err erro
 }
 
 func createCertificate(commonName string) ([]byte, crypto.PrivateKey, error) {
+	serialNumber, err := util.GenerateCertificateSerialNumber()
+	if err != nil {
+		return nil, nil, err
+	}
 	template := &x509.Certificate{
-		SerialNumber:          &big.Int{},
+		SerialNumber:          serialNumber,
 		Subject:               pkix.Name{Organization: []string{"EDB root"}, CommonName: commonName},
 		NotAfter:              time.Now().AddDate(10, 0, 0),
 		DNSNames:              []string{commonName},
