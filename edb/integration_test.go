@@ -5,6 +5,8 @@ package edb
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -591,14 +593,14 @@ func createCertificate(commonName, signerCert, signerKey string) (cert, key stri
 	return string(pemCert), string(pemKey)
 }
 
-func generateCertificate(commonName, signerCert, signerKey string) ([]byte, *rsa.PrivateKey) {
+func generateCertificate(commonName, signerCert, signerKey string) ([]byte, *ecdsa.PrivateKey) {
 	template := &x509.Certificate{
 		SerialNumber: &big.Int{},
 		Subject:      pkix.Name{CommonName: commonName},
 		NotAfter:     time.Now().Add(time.Hour),
 	}
 
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		panic(err)
 	}

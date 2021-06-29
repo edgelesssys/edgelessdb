@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
@@ -252,7 +254,7 @@ func createCertificate(hostname string, ips []net.IP, signerCert []byte, signerK
 	if err != nil {
 		return nil, nil, err
 	}
-	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	priv, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
 	if err != nil {
 		return nil, nil, err
 	}
