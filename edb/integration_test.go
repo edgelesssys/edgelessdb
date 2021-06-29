@@ -574,7 +574,10 @@ func createCertificate(commonName, signerCert, signerKey string) (cert, key stri
 	certBytes, priv := generateCertificate(commonName, signerCert, signerKey)
 
 	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: certBytes})
-	keyBytes, _ := x509.MarshalPKCS8PrivateKey(priv)
+	keyBytes, err := x509.MarshalPKCS8PrivateKey(priv)
+	if err != nil {
+		panic(err)
+	}
 	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyBytes})
 	return string(pemCert), string(pemKey)
 }
@@ -585,17 +588,28 @@ func generateCertificate(commonName, signerCert, signerKey string) ([]byte, *rsa
 		Subject:      pkix.Name{CommonName: commonName},
 		NotAfter:     time.Now().Add(time.Hour),
 	}
-	priv, _ := rsa.GenerateKey(rand.Reader, 2048)
-	var certBytes []byte
 
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
+	}
+
+	var certBytes []byte
 	if signerCert == "" {
 		template.BasicConstraintsValid = true
 		template.IsCA = true
-		certBytes, _ = x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
+		certBytes, err = x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
 	} else {
-		signer, _ := tls.X509KeyPair([]byte(signerCert), []byte(signerKey))
+		signer, errKeyPair := tls.X509KeyPair([]byte(signerCert), []byte(signerKey))
+		if errKeyPair != nil {
+			panic(errKeyPair)
+		}
 		parsedSignerCert, _ := x509.ParseCertificate(signer.Certificate[0])
-		certBytes, _ = x509.CreateCertificate(rand.Reader, template, parsedSignerCert, &priv.PublicKey, signer.PrivateKey)
+		certBytes, err = x509.CreateCertificate(rand.Reader, template, parsedSignerCert, &priv.PublicKey, signer.PrivateKey)
+	}
+
+	if err != nil {
+		panic(err)
 	}
 
 	return certBytes, priv

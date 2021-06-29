@@ -44,7 +44,8 @@ func TestSplitHostPort(t *testing.T) {
 func TestToPEM(t *testing.T) {
 	assert := assert.New(t)
 
-	cert, key := createCertificate("")
+	cert, key, err := createCertificate("")
+	assert.NoError(err)
 	keyBytes, err := x509.MarshalPKCS8PrivateKey(key)
 	assert.Nil(err)
 
