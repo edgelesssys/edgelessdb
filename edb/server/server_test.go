@@ -7,7 +7,6 @@ import (
 	"crypto/x509"
 	"encoding/base64"
 	"encoding/pem"
-	"math/big"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -52,7 +51,7 @@ func TestManifestRecovery(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
-	cert, key, err := createCertificate()
+	cert, key, err := createMockRecoveryKey()
 	require.NoError(err)
 
 	jsonManifest := `
@@ -81,20 +80,17 @@ func TestManifestRecovery(t *testing.T) {
 	assert.Equal(sealedKey, plaintext)
 }
 
-func createCertificate() (string, *rsa.PrivateKey, error) {
-	template := &x509.Certificate{
-		SerialNumber: &big.Int{},
-	}
+func createMockRecoveryKey() (string, *rsa.PrivateKey, error) {
 	priv, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		return "", nil, err
 	}
-	cert, err := x509.CreateCertificate(rand.Reader, template, template, &priv.PublicKey, priv)
+	pubPKIX, err := x509.MarshalPKIXPublicKey(priv.Public())
 	if err != nil {
 		return "", nil, err
 	}
-	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
-	return string(pemCert), priv, nil
+	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubPKIX})
+	return string(pemKey), priv, nil
 }
 
 func newCoreWithMocks() (*core.Core, *db.DatabaseMock, afero.Afero, string) {

@@ -405,13 +405,14 @@ func TestRecovery(t *testing.T) {
 
 	caCertPem, caKeyPem := createCertificate("ca", "", "")
 	usrCertPem, usrKeyPem := createCertificate("usr", caCertPem, caKeyPem)
+	recoveryKeyPem, recoveryKeyPriv := createRecoveryKey()
 
 	manifest := createManifest(caCertPem, []string{
 		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
 		"CREATE DATABASE test",
 		"CREATE TABLE test.data (i INT)",
 		"GRANT ALL ON test.data TO usr",
-	}, false, usrCertPem)
+	}, false, recoveryKeyPem)
 
 	setConfig(false, "")
 	defer cleanupConfig()
@@ -448,12 +449,7 @@ func TestRecovery(t *testing.T) {
 	assert.Empty(sig)
 
 	// Post recovery key
-	usrKeyDer, _ := pem.Decode([]byte(usrKeyPem))
-	parsedKey, err := x509.ParsePKCS8PrivateKey(usrKeyDer.Bytes)
-	assert.NoError(err)
-	usrKey, ok := parsedKey.(*rsa.PrivateKey)
-	assert.True(ok)
-	recoveryKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, usrKey, recoveryKeyEnc, nil)
+	recoveryKey, err := rsa.DecryptOAEP(sha256.New(), rand.Reader, recoveryKeyPriv, recoveryKeyEnc, nil)
 	assert.NoError(err)
 	postRecoveryKey(newServerCert, recoveryKey)
 
@@ -568,6 +564,19 @@ func createEdbCmd(marbleUUIDPath string) *exec.Cmd {
 
 func isUnexpectedEDBError(err error) bool {
 	return err != nil && err.Error() != "signal: killed"
+}
+
+func createRecoveryKey() (string, *rsa.PrivateKey) {
+	priv, err := rsa.GenerateKey(rand.Reader, 2048)
+	if err != nil {
+		panic(err)
+	}
+	pubPKIX, err := x509.MarshalPKIXPublicKey(priv.Public())
+	if err != nil {
+		panic(err)
+	}
+	pemKey := pem.EncodeToMemory(&pem.Block{Type: "PUBLIC KEY", Bytes: pubPKIX})
+	return string(pemKey), priv
 }
 
 func createCertificate(commonName, signerCert, signerKey string) (cert, key string) {
