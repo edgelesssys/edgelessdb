@@ -8,7 +8,7 @@ We consider these roles:
 * *Readers* can read data from a set of tables
 * *Writers* can write to a set of tables (but not read)
 
-*Prerequisite*: [era](https://github.com/edgelesssys/era) is installed.
+*Prerequisite*: [era](https://github.com/edgelesssys/era) and [mysql-client](https://packages.ubuntu.com/focal/mysql-client) are installed.
 
 ## Generate keys and certificates
 EDB identifies clients based on their X.509 certificates. The owner includes the CA certificate(s) of the client certificates in the manifest.
@@ -80,7 +80,9 @@ First, get the attested EDB root certificate and verify the manifest signature l
 ```
 $ cd ../reader
 
-[...]
+$ era -c ../edb-enclave.json -h localhost:8080 -output-root edb.pem
+
+[... manifest verification ...]
 
 $ mysql -h127.0.0.1 -ureader --ssl-ca edb.pem --ssl-cert cert.pem --ssl-key key.pem
 
