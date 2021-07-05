@@ -180,17 +180,9 @@ func TestPersistence(t *testing.T) {
 
 	assert.Nil(process.Kill())
 
-	// TODO: Find out why restarting EDB here sometimes fails (stdout/err seems to be empty)
-	// TODO AB#875 This is from legacy TiDB-based EDB. Check if this is still true for MariaDB-based EDB.
-	for i := 0; i < 3; i++ {
-		process = startEDB("")
-		if process != nil {
-			break
-		}
-		log.Printf("TestPersistence: restart failed, trying again (%v/3)\n", i+1)
-	}
-
-	assert.NotNil(process)
+	// Restart
+	process = startEDB("")
+	assert.NotNil(process, "restart failed!")
 	defer process.Kill()
 
 	var val float64
