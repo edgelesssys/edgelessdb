@@ -16,12 +16,14 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"os"
 	"sync"
 	"time"
 
 	"github.com/edgelesssys/edb/edb/db"
 	"github.com/edgelesssys/edb/edb/rt"
 	"github.com/edgelesssys/edb/edb/util"
+	"github.com/edgelesssys/ego/marble"
 	"github.com/spf13/afero"
 )
 
@@ -82,6 +84,12 @@ func (c *Core) GetManifestSignature() []byte {
 
 // GetCertificateReport gets the certificate and a report that includes the certificate's hash.
 func (c *Core) GetCertificateReport() (string, []byte, error) {
+	// When running as a Marble, return certificate chain
+	if c.isMarble {
+		return c.getCertificateReportMarble()
+	}
+
+	// When running standalone, return edb root certificate
 	cert, _ := c.db.GetCertificate()
 	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
 	if len(pemCert) <= 0 {
@@ -92,6 +100,12 @@ func (c *Core) GetCertificateReport() (string, []byte, error) {
 
 // GetTLSConfig creates a TLS configuration that includes the certificate.
 func (c *Core) GetTLSConfig() *tls.Config {
+	// When running as a Marble, return TLS config containing a certificate chain
+	if c.isMarble {
+		return c.getTLSConfigMarble()
+	}
+
+	// When running standalone, return TLS config containing only edb's self-signed certificate
 	cert, key := c.db.GetCertificate()
 	return &tls.Config{
 		Certificates: []tls.Certificate{
@@ -159,7 +173,16 @@ func (c *Core) StartDatabase() error {
 		return err
 	}
 
-	cert, _ := c.db.GetCertificate()
+	var cert []byte
+	if c.isMarble {
+		var err error
+		cert, err = c.getCertificateCA()
+		if err != nil {
+			return err
+		}
+	} else {
+		cert, _ = c.db.GetCertificate()
+	}
 	hash := sha256.Sum256(cert)
 	var err error
 	c.report, err = c.rt.GetRemoteReport(hash[:])
@@ -207,7 +230,7 @@ func (c *Core) getConfigForClient(chi *tls.ClientHelloInfo) (*tls.Config, error)
 	return &tls.Config{
 		Certificates: []tls.Certificate{
 			{
-				Certificate: [][]byte{cert},
+				Certificate: [][]byte{cert, signerCert},
 				PrivateKey:  key,
 			},
 		},
@@ -267,4 +290,59 @@ func createCertificate(hostname string, ips []net.IP, signerCert []byte, signerK
 		return nil, nil, err
 	}
 	return cert, priv, nil
+}
+
+func (c *Core) getCertificateReportMarble() (string, []byte, error) {
+	cert, _ := c.db.GetCertificate()
+	marbleCACert, err := c.getCertificateCA()
+	if err != nil {
+		return "", nil, err
+	}
+	pemCert := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: cert})
+	if len(pemCert) <= 0 {
+		return "", nil, errors.New("failed to encode certificate")
+	}
+	marbleCACertPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: marbleCACert})
+	if len(marbleCACertPEM) <= 0 {
+		return "", nil, errors.New("failed to encode certificate")
+	}
+	return string(pemCert) + string(marbleCACertPEM), c.report, nil
+}
+
+func (c *Core) getTLSConfigMarble() *tls.Config {
+	cert, key := c.db.GetCertificate()
+
+	marbleCACert, err := c.getCertificateCA()
+	if err != nil {
+		panic(err)
+	}
+
+	return &tls.Config{
+		Certificates: []tls.Certificate{
+			{
+				Certificate: [][]byte{cert, marbleCACert},
+				PrivateKey:  key,
+			},
+		},
+		GetConfigForClient: c.getConfigForClient,
+	}
+}
+
+// getCertificateCA returns the Marblerun root/intermediate CA certificate used to generate edb's root certificate when running as a Marble
+func (c *Core) getCertificateCA() ([]byte, error) {
+	if !c.isMarble {
+		return nil, errors.New("not running as a Marble")
+	}
+
+	marbleCAPEM := os.Getenv(marble.MarbleEnvironmentRootCA)
+	if marbleCAPEM == "" {
+		return nil, errors.New("cannot successfully retrieve Marble root CA from environment")
+	}
+
+	block, _ := pem.Decode([]byte(marbleCAPEM))
+	if block == nil {
+		return nil, errors.New("cannot decode Marble root CA from environment")
+	}
+
+	return block.Bytes, nil
 }

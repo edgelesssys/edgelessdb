@@ -35,6 +35,7 @@ import (
 
 	"github.com/edgelesssys/edb/edb/core"
 	"github.com/edgelesssys/edb/edb/db"
+	"github.com/edgelesssys/ego/marble"
 	"github.com/edgelesssys/era/era"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"
 	"github.com/go-sql-driver/mysql"
@@ -843,7 +844,7 @@ func startMockMarblerunCoordinator() (*grpc.Server, string, error) {
 	privKeyPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyPKCS8}))
 	secertRootCert, secretRootKey := createMarbleSecretCertificate(rootCertPEM, privKeyPEM)
 
-	marbleServer := marbleServer{dataDir: tempDir, secretRootCert: secertRootCert, secretRootKey: secretRootKey}
+	marbleServer := marbleServer{dataDir: tempDir, rootCert: rootCertPEM, secretRootCert: secertRootCert, secretRootKey: secretRootKey}
 	rpc.RegisterMarbleServer(server, marbleServer)
 
 	listener, err := net.Listen("tcp", "localhost:")
@@ -864,12 +865,13 @@ func startMockMarblerunCoordinator() (*grpc.Server, string, error) {
 
 type marbleServer struct {
 	dataDir        string
+	rootCert       string
 	secretRootCert string
 	secretRootKey  string
 }
 
 func (m marbleServer) Activate(context.Context, *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	return &rpc.ActivationResp{Parameters: &rpc.Parameters{
-		Env: map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir, core.ERocksDBMasterKeyVar: "4142434445464748494a4b4c4d4e4f50", db.EnvRootCertificate: m.secretRootCert, db.EnvRootKey: m.secretRootKey},
+		Env: map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir, core.ERocksDBMasterKeyVar: "4142434445464748494a4b4c4d4e4f50", marble.MarbleEnvironmentRootCA: m.rootCert, db.EnvRootCertificate: m.secretRootCert, db.EnvRootKey: m.secretRootKey},
 	}}, nil
 }
