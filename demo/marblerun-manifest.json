@@ -1,0 +1,48 @@
+{
+    "Packages": {
+        "edb": {
+            "Debug": true,
+            "UniqueID": "123"
+        }
+    },
+    "Marbles": {
+        "edb-sample": {
+            "Package": "edb",
+            "Parameters": {
+                "Env": {
+                    "EROCKSDB_MASTERKEY": "{{ hex .Secrets.MasterKey.Private }}",
+                    "EDB_ROOT_CERT": "{{ pem .Secrets.RootCertificate.Cert }}",
+                    "EDB_ROOT_KEY": "{{ pem .Secrets.RootCertificate.Private }}"
+                },
+                "Argv": [
+                    "./edb",
+                    "-marble"
+                ]
+            }
+        }
+    },
+    "Secrets": {
+        "MasterKey": {
+            "Size": 128,
+            "Shared": true,
+            "Type": "symmetric-key"
+        },
+        "RootCertificate": {
+            "Size": 256,
+            "Type": "cert-ecdsa",
+            "Shared": true,
+            "Cert": {
+                "IsCA": true,
+                "DNSNames": [
+                    "localhost"
+                ],
+                "Subject": {
+                    "Organization": [
+                        "EDB root"
+                    ],
+                    "CommonName": "localhost"
+                }
+            }
+        }
+    }
+}
