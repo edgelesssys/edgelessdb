@@ -18,8 +18,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 
+	"github.com/edgelesssys/edb/edb/rt"
 	_ "github.com/go-sql-driver/mysql" // import driver used via the database/sql package
 )
 
@@ -32,10 +32,10 @@ const (
 	filenameCnf          = "my.cnf"
 	filenameInit         = "init.sql"
 	filenameBootstrapLog = "mariadb-error.log"
-	filenameErrorLog     = "mariadb.err"
 	filenameGeneralLog   = "mariadb.log"
 	filenameSlowQueryLog = "mariadb-slow.log"
 	filenameBinaryLog    = "mariadb-binary.log"
+	FilenameErrorLog     = "mariadb.err" // this one is public as we try to parse it from elsewhere in case MariaDB directly tries to call exit() due to an error
 )
 
 // ErrPreviousInitFailed is thrown when a previous initialization attempt failed, but another init or start is attempted.
@@ -84,7 +84,7 @@ func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, ce
 	var err error
 	if isMarble {
 		// When running under Marblerun, expect that it passes edb's root certificate + private key
-		d.log.Println("parsing root certificate passed from Marblerun")
+		rt.Log.Println("parsing root certificate passed from Marblerun")
 		cert, key, err = setupCertificateFromMarblerun()
 	} else {
 		// Otherweise in standalone mode, we generate this here
@@ -135,27 +135,16 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 		return err
 	}
 
-	// Save original stdout & stderr and print it after execution
-	// MariaDB will hijack it and forward it to its error log
-	origStdout, err := syscall.Dup(syscall.Stdout)
-	if err != nil {
-		panic("cannot save original stdout before bootstrapping, aborting")
-	}
-	origStderr, err := syscall.Dup(syscall.Stderr)
-	if err != nil {
-		panic("cannot save original stderr before bootstrapping, aborting")
-	}
-
 	d.attemptedInit = true
 
 	// Launch MariaDB
 	if err := d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)); err != 0 {
-		d.printErrorLog(origStdout, origStderr, false)
+		d.printErrorLog(false)
 		d.log.Printf("FATAL: bootstrap failed, MariaDB exited with error code: %d\n", err)
 		panic("bootstrap failed")
 	}
 
-	return d.printErrorLog(origStdout, origStderr, true)
+	return d.printErrorLog(true)
 }
 
 // Start starts the database.
@@ -313,7 +302,7 @@ ssl-key = "` + filepath.Join(d.internalPath, filenameKey) + `"
 		// https://mariadb.com/kb/en/slow-query-log-overview/
 		// http://myrocks.io/docs/getting-started/
 		if len(d.debugLogDir) > 0 {
-			logFiles := map[string]string{"log_error": filenameErrorLog, "general_log_file": filenameGeneralLog, "slow_query_log_file": filenameSlowQueryLog, "log_bin": filenameBinaryLog, "rocksdb_db_log_dir": ""}
+			logFiles := map[string]string{"log_error": FilenameErrorLog, "general_log_file": filenameGeneralLog, "slow_query_log_file": filenameSlowQueryLog, "log_bin": filenameBinaryLog, "rocksdb_db_log_dir": ""}
 			for logName, logFile := range logFiles {
 				cnf += fmt.Sprintf("%v=%v\n", logName, filepath.Join(d.debugLogDir, logFile))
 			}
@@ -327,7 +316,7 @@ binlog-format=ROW
 `
 	} else {
 		// Redirect error-log to memfs
-		cnf += fmt.Sprintf("%v=%v\n", "log_error", filepath.Join(d.internalPath, filenameErrorLog))
+		cnf += fmt.Sprintf("%v=%v\n", "log_error", filepath.Join(d.internalPath, FilenameErrorLog))
 		cnf += fmt.Sprintf("%v=%v\n", "rocksdb_db_log_dir", d.internalPath)
 	}
 	return d.writeFile(filenameCnf, []byte(cnf))
@@ -391,13 +380,10 @@ func sqlOpen(address string) (*sql.DB, error) {
 	return sql.Open("mysql", "root@tcp("+address+")/")
 }
 
-func (d *Mariadb) printErrorLog(stdoutFd int, stderrFd int, onlyPrintOnError bool) error {
+func (d *Mariadb) printErrorLog(onlyPrintOnError bool) error {
 	// Restore original stdout & stderr from MariaDB's redirection
-	if err := syscall.Dup2(stdoutFd, syscall.Stdout); err != nil {
-		panic("cannot restore stdout from MariaDB's redirection, aborting")
-	}
-	if err := syscall.Dup2(stderrFd, syscall.Stderr); err != nil {
-		panic("cannot restore stderr from MariaDB's redirection, aborting")
+	if err := rt.RestoreStdoutAndStderr(); err != nil {
+		panic(err)
 	}
 
 	// Read error log from internal memfs

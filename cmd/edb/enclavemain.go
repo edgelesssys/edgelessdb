@@ -14,6 +14,8 @@ import (
 	"github.com/edgelesssys/marblerun/marble/premain"
 )
 
+const internalPath = "/tmp/edb" // supposed to be mounted in emain.cpp
+
 func main() {
 	runAsMarble := flag.Bool("marble", false, "Run edb with Marblerun")
 	flag.Parse()
@@ -36,7 +38,6 @@ func main() {
 	// Load config parameters from environment variables
 	config = core.FillConfigFromEnvironment(config)
 
-	internalPath := "/tmp/edb"
 	if err := os.Mkdir(internalPath, 0); err != nil {
 		panic(err)
 	}
