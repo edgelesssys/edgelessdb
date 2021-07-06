@@ -15,6 +15,8 @@ import (
 	"github.com/edgelesssys/marblerun/marble/premain"
 )
 
+var internalPath string
+
 func main() {
 	runAsMarble := flag.Bool("marble", false, "Run edb with Marblerun")
 	flag.Parse()
@@ -38,7 +40,8 @@ func main() {
 	// Load config parameters from environment variables
 	config = core.FillConfigFromEnvironment(config)
 
-	internalPath, err := ioutil.TempDir("", "")
+	var err error
+	internalPath, err = ioutil.TempDir("", "")
 	if err != nil {
 		panic(err)
 	}
