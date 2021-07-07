@@ -11,6 +11,7 @@ find_package(OpenEnclave CONFIG REQUIRED)
 
 set(MARIADB_CMAKE_ARGS
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+  -DWITH_EDB=ON
   -DEDBDIR=${CMAKE_SOURCE_DIR}
   -DUPDATE_SUBMODULES=OFF
   -DPLUGIN_ROCKSDB=STATIC
@@ -98,10 +99,6 @@ else ()
   ExternalProject_Add(mariadb
     URL ${CMAKE_SOURCE_DIR}/3rdparty/mariadb
     SOURCE_DIR mariadb-src
-    PATCH_COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb.patch
-    COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/rocksdb.patch
-    COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb-frm-files.patch
-    COMMAND patch -p1 < ${CMAKE_SOURCE_DIR}/src/mariadb-rocksdb-logging.patch
     BINARY_DIR mariadb
     CMAKE_ARGS ${MARIADB_CMAKE_ARGS}
     BUILD_COMMAND make -j ${NPROC} mariadbd my_print_defaults resolveip
