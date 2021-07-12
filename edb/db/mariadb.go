@@ -12,7 +12,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
@@ -55,7 +54,6 @@ type Mariadb struct {
 	debug                            bool
 	debugLogDir                      string
 	mariadbd                         Mariadbd
-	log                              *log.Logger
 	cert                             []byte
 	key                              crypto.PrivateKey
 	manifestSig                      []byte
@@ -76,7 +74,6 @@ func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, ce
 		debug:           debug,
 		debugLogDir:     logDir,
 		mariadbd:        mariadbd,
-		log:             log.New(os.Stdout, "[EDB] ", log.LstdFlags),
 	}
 
 	var cert []byte
@@ -110,7 +107,7 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 		return errors.New("already initialized")
 	}
 	if d.attemptedInit {
-		d.log.Println("Cannot initialize the database, a previous attempt failed. The DB is in an inconsistent state. Please provide an empty data directory.")
+		rt.Log.Println("Cannot initialize the database, a previous attempt failed. The DB is in an inconsistent state. Please provide an empty data directory.")
 		return ErrPreviousInitFailed
 	}
 
@@ -127,7 +124,7 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 		return err
 	}
 
-	d.log.Println("initializing ...")
+	rt.Log.Println("initializing ...")
 
 	// Remove already existing log file, as we do not want replayed logs
 	err := os.Remove(filepath.Join(d.internalPath, filenameBootstrapLog))
@@ -140,7 +137,7 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 	// Launch MariaDB
 	if err := d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf)); err != 0 {
 		d.printErrorLog(false)
-		d.log.Printf("FATAL: bootstrap failed, MariaDB exited with error code: %d\n", err)
+		rt.Log.Printf("FATAL: bootstrap failed, MariaDB exited with error code: %d\n", err)
 		panic("bootstrap failed")
 	}
 
@@ -151,7 +148,7 @@ func (d *Mariadb) Initialize(jsonManifest []byte) error {
 func (d *Mariadb) Start() error {
 	_, err := os.Stat(filepath.Join(d.externalPath, "#rocksdb"))
 	if os.IsNotExist(err) {
-		d.log.Println("DB has not been initialized, waiting for manifest.")
+		rt.Log.Println("DB has not been initialized, waiting for manifest.")
 		return nil
 	}
 	if err != nil {
@@ -169,7 +166,7 @@ func (d *Mariadb) Start() error {
 		return err
 	}
 
-	d.log.Println("starting up ...")
+	rt.Log.Println("starting up ...")
 	go func() {
 		ret := d.mariadbd.Main(filepath.Join(d.internalPath, filenameCnf))
 		panic(fmt.Errorf("mariadbd.Main returned unexpectedly with %v", ret))
@@ -180,8 +177,8 @@ func (d *Mariadb) Start() error {
 
 	cert, key, jsonManifest, err := getConfigFromSQL(normalizedInternalAddr)
 	if err != nil {
-		d.log.Println("An initialization attempt failed. The DB is in an inconsistent state. Please provide an empty data directory.")
-		d.log.Fatalln(err)
+		rt.Log.Println("An initialization attempt failed. The DB is in an inconsistent state. Please provide an empty data directory.")
+		rt.Log.Fatalln(err)
 	}
 
 	var man manifest
@@ -213,7 +210,7 @@ func (d *Mariadb) Start() error {
 	c.Close()
 
 	d.mariadbd.WaitUntilStarted()
-	d.log.Println("DB is running.")
+	rt.Log.Println("DB is running.")
 	return nil
 }
 

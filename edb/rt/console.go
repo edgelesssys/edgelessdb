@@ -2,11 +2,16 @@ package rt
 
 import (
 	"fmt"
+	"log"
+	"os"
 	"syscall"
 )
 
 var savedStdout int
 var savedStderr int
+
+// Log provides edb's logging functionality before we enter MariaDB or after we exited from there
+var Log = log.New(os.Stdout, "[EDB] ", log.LstdFlags)
 
 // SaveStdoutAndStderr saves the stdout/stderr outputs before we call into MariaDB
 func SaveStdoutAndStderr() error {
