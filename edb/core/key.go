@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/edgelesssys/edb/edb/rt"
 	"github.com/edgelesssys/ego/ecrypto"
 )
 
@@ -174,6 +175,8 @@ func (c *Core) mustInitMasterKey() {
 	}
 	// Failed to read/decrypt? Enter recovery.
 	if err != nil {
+		rt.Log.Println("Failed to initialize master key:", err)
+		rt.Log.Println("Entering recovery mode...")
 		c.advanceState(stateRecovery)
 		return
 	}
