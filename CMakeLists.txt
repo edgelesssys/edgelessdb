@@ -145,6 +145,18 @@ set(MARIADB_LIBC -static-libgcc -static-libstdc++
   crypt m pthread dl rt)
 
 #
+# Configure enclave.conf
+#
+
+# default size
+if (NOT HEAPSIZE)
+  set(HEAPSIZE 1024)
+endif()
+
+math(EXPR HEAPSIZE "${HEAPSIZE} * 256")
+configure_file(src/enclave.conf enclave.conf)
+
+#
 # Generate key
 #
 
@@ -153,7 +165,7 @@ add_custom_command(
   COMMAND openssl genrsa -out private.pem -3 3072
   COMMAND openssl rsa -in private.pem -pubout -out public.pem)
 
-add_custom_target(genkey DEPENDS src/enclave.conf private.pem public.pem)
+add_custom_target(genkey DEPENDS ${CMAKE_BINARY_DIR}/enclave.conf private.pem public.pem)
 
 #
 # build mariadbd (statically linked) for testing purposes
@@ -182,7 +194,7 @@ target_link_libraries(emariadbd
 
 add_custom_command(TARGET emariadbd POST_BUILD
   COMMAND openenclave::oesign sign -e $<TARGET_FILE:emariadbd> -c
-          ${CMAKE_SOURCE_DIR}/src/enclave.conf -k private.pem)
+  ${CMAKE_BINARY_DIR}/enclave.conf -k private.pem)
 
 #
 # build edb-noenclave
@@ -235,7 +247,7 @@ target_link_libraries(edb-enclave
 
 add_custom_command(TARGET edb-enclave POST_BUILD
   COMMAND openenclave::oesign sign -e $<TARGET_FILE:edb-enclave> -c
-          ${CMAKE_SOURCE_DIR}/src/enclave.conf -k private.pem
+          ${CMAKE_BINARY_DIR}/enclave.conf -k private.pem
   COMMAND openenclave::oesign eradump -e edb-enclave.signed >
           edb-enclave.json)
 
