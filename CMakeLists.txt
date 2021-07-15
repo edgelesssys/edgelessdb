@@ -12,6 +12,7 @@ find_package(OpenEnclave CONFIG REQUIRED)
 set(MARIADB_CMAKE_ARGS
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
   -DWITH_EDB=ON
+  -DWITH_EROCKS=ON
   -DEDBDIR=${CMAKE_SOURCE_DIR}
   -DUPDATE_SUBMODULES=OFF
   -DPLUGIN_ROCKSDB=STATIC
@@ -65,7 +66,7 @@ set(MARIADB_CMAKE_ARGS
   -DWITH_PCRE=bundled
 )
 
-if (NOT MARIADB_DEV OR NOT EXISTS ${CMAKE_SOURCE_DIR}/3rdparty/mariadb/.git)
+if (NOT EXISTS ${CMAKE_SOURCE_DIR}/3rdparty/mariadb/.git)
   execute_process(
     COMMAND git submodule update --init --depth=1 --recursive 3rdparty/mariadb
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
@@ -87,23 +88,13 @@ endif()
 #
 # build mariadb
 #
-if (MARIADB_DEV)
-  ExternalProject_Add(mariadb
-    SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mariadb
-    BUILD_ALWAYS ON
-    BINARY_DIR mariadb
-    CMAKE_ARGS ${MARIADB_CMAKE_ARGS}
-    BUILD_COMMAND make -j ${NPROC} mariadbd my_print_defaults resolveip
-    INSTALL_COMMAND "")
-else ()
-  ExternalProject_Add(mariadb
-    URL ${CMAKE_SOURCE_DIR}/3rdparty/mariadb
-    SOURCE_DIR mariadb-src
-    BINARY_DIR mariadb
-    CMAKE_ARGS ${MARIADB_CMAKE_ARGS}
-    BUILD_COMMAND make -j ${NPROC} mariadbd my_print_defaults resolveip
-    INSTALL_COMMAND "")
-endif ()
+ExternalProject_Add(mariadb
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mariadb
+  BUILD_ALWAYS ON
+  BINARY_DIR mariadb
+  CMAKE_ARGS ${MARIADB_CMAKE_ARGS}
+  BUILD_COMMAND make -j ${NPROC} mariadbd my_print_defaults resolveip
+  INSTALL_COMMAND "")
 
 set(MARIADB ${CMAKE_BINARY_DIR}/mariadb)
 
