@@ -509,6 +509,93 @@ func TestRecovery(t *testing.T) {
 	assert.Equal(2., val)
 }
 
+func TestShow(t *testing.T) {
+	assert := assert.New(t)
+
+	caCert, caKey := createCertificate("Owner CA", "", "")
+	readerCert, readerKey := createCertificate("Reader", caCert, caKey)
+	writerCert, writerKey := createCertificate("Writer", caCert, caKey)
+
+	manifest := createManifest(caCert, []string{
+		"CREATE USER reader REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Reader'",
+		"CREATE USER writer REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Writer'",
+		"CREATE DATABASE test",
+		"CREATE TABLE test.data (i INT)",
+		"GRANT SELECT ON test.data TO reader",
+		"GRANT INSERT ON test.data TO writer",
+	}, false, "")
+
+	setConfig(false, "")
+	defer cleanupConfig()
+	process := startEDB("")
+	assert.NotNil(process)
+	defer process.Kill()
+
+	// Owner
+	{
+		serverCert := getServerCertificate()
+		_, err := postManifest(serverCert, manifest, true)
+		assert.NoError(err)
+	}
+
+	// Writer
+	{
+		serverCert := getServerCertificate()
+		sig := getManifestSignature(serverCert)
+		assert.Equal(calculateManifestSignature(manifest), sig)
+
+		db := sqlOpen("writer", writerCert, writerKey, serverCert)
+		checkSQLShow(db, assert)
+		db.Close()
+	}
+
+	// Reader
+	{
+		serverCert := getServerCertificate()
+		sig := getManifestSignature(serverCert)
+		assert.Equal(calculateManifestSignature(manifest), sig)
+
+		db := sqlOpen("reader", readerCert, readerKey, serverCert)
+		checkSQLShow(db, assert)
+		db.Close()
+	}
+}
+
+func checkSQLShow(db *sql.DB, assert *assert.Assertions) {
+	// check dbnames
+	res, err := db.Query("SHOW DATABASES")
+	assert.NoError(err)
+
+	var dbname string
+	var dbnameList []string
+	for res.Next() {
+		assert.NoError(res.Scan(&dbname))
+		dbnameList = append(dbnameList, dbname)
+	}
+	assert.NoError(res.Close())
+	assert.Equal([]string{"information_schema", "test"}, dbnameList)
+
+	// check tables
+	tx, err := db.Begin()
+	assert.NoError(err)
+	_, err = tx.Exec("USE test")
+	assert.NoError(err)
+
+	res, err = tx.Query("SHOW TABLES")
+	assert.NoError(err)
+
+	var tname string
+	var tnameList []string
+	for res.Next() {
+		res.Scan(&tname)
+		tnameList = append(tnameList, tname)
+	}
+	assert.NoError(res.Close())
+	assert.Equal([]string{"data"}, tnameList)
+
+	assert.NoError(tx.Commit())
+}
+
 func setConfig(debug bool, logDir string) {
 	tempPath, err := ioutil.TempDir("", "")
 	if err != nil {
