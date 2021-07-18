@@ -17,8 +17,8 @@ make -j`nproc`
 
 ## Test
 ```sh
-go test ./...
-go test -v -tags integration ./edb -e ../build/edb
+cd build
+ctest --output-on-failure
 ```
 
 ### Run emariadbd

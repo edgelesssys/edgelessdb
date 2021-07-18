@@ -9,6 +9,8 @@ include(ExternalProject)
 include(ProcessorCount)
 find_package(OpenEnclave CONFIG REQUIRED)
 
+option(BUILD_TESTS "" ON)
+
 set(MARIADB_CMAKE_ARGS
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
   -DWITH_EDB=ON
@@ -240,3 +242,14 @@ add_custom_command(TARGET edb-enclave POST_BUILD
           edb-enclave.json)
 
 configure_file(src/edb edb COPYONLY)
+
+#
+# tests
+#
+
+if(BUILD_TESTS)
+  enable_testing()
+  add_test(NAME unit-tests COMMAND go test ./... WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(NAME integration-noenclave COMMAND go test -v -tags integration ./edb -e ${CMAKE_BINARY_DIR}/edb-noenclave WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(NAME integration COMMAND go test -v -tags integration ./edb -e ${CMAKE_BINARY_DIR}/edb WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()
