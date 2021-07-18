@@ -16,9 +16,19 @@ make -j`nproc`
 ```
 
 ## Test
+
+### EDB tests
 ```sh
 cd build
 ctest --output-on-failure
+```
+
+### MariaDB tests
+*Prerequisite*: A fresh EDB instance with default config is running.
+```sh
+curl -k -d@src/test_manifest.json https://127.0.0.1:8080/manifest
+cd build/mariadb
+MYSQL_TEST_TLS=1 ctest --output-on-failure
 ```
 
 ### Run emariadbd

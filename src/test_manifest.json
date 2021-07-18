@@ -1,0 +1,6 @@
+{
+    "sql": [
+        "GRANT ALL ON *.* TO root WITH GRANT OPTION",
+        "CREATE DATABASE test"
+    ]
+}

@@ -90,12 +90,17 @@ endif()
 #
 # build mariadb
 #
+
+if(NOT BUILD_TESTS)
+  set(MARIADB_TARGETS mariadbd my_print_defaults resolveip)
+endif()
+
 ExternalProject_Add(mariadb
   SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mariadb
   BUILD_ALWAYS ON
   BINARY_DIR mariadb
   CMAKE_ARGS ${MARIADB_CMAKE_ARGS}
-  BUILD_COMMAND make -j ${NPROC} mariadbd my_print_defaults resolveip
+  BUILD_COMMAND make -j ${NPROC} ${MARIADB_TARGETS}
   INSTALL_COMMAND "")
 
 set(MARIADB ${CMAKE_BINARY_DIR}/mariadb)
