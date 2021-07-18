@@ -8,6 +8,7 @@ import (
 	"crypto/x509"
 	"database/sql"
 	"encoding/json"
+	"encoding/pem"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -337,7 +338,21 @@ func (d *Mariadb) writeCertificates() error {
 	if err != nil {
 		return err
 	}
-	if err := d.writeFile(filenameCA, []byte(d.ca)); err != nil {
+
+	var ca []byte
+	if d.ca != "" {
+		ca = []byte(d.ca)
+	} else {
+		// The manifest didn't contain a CA certificate, but we set ssl-ca in configureStart.
+		// Thus, we must provide one or otherwise mariadb will not accept connections.
+		ca, _, err = createCertificate("dummy")
+		if err != nil {
+			return err
+		}
+		ca = pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: ca})
+	}
+
+	if err := d.writeFile(filenameCA, ca); err != nil {
 		return err
 	}
 	if err := d.writeFile(filenameCert, cert); err != nil {
