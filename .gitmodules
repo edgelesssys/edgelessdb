@@ -1,0 +1,6 @@
+[submodule "3rdparty/edgeless-mariadb"]
+	path = 3rdparty/edgeless-mariadb
+	url = https://github.com/edgelesssys/edgeless-mariadb
+[submodule "3rdparty/edgeless-rocksdb"]
+	path = 3rdparty/edgeless-rocksdb
+	url = https://github.com/edgelesssys/edgeless-rocksdb
