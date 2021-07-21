@@ -13,9 +13,9 @@ option(BUILD_TESTS "" ON)
 
 set(MARIADB_CMAKE_ARGS
   -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
-  -DWITH_EDB=ON
-  -DWITH_EROCKS=ON
-  -DEDBDIR=${CMAKE_SOURCE_DIR}
+  -DEDG_WITH_EDB=ON
+  -DEDG_WITH_EROCKS=ON
+  -DEDG_EDBDIR=${CMAKE_SOURCE_DIR}
   -DUPDATE_SUBMODULES=OFF
   -DPLUGIN_ROCKSDB=STATIC
   -DPLUGIN_ARCHIVE=NO
@@ -68,15 +68,11 @@ set(MARIADB_CMAKE_ARGS
   -DWITH_PCRE=bundled
 )
 
-if (NOT EXISTS ${CMAKE_SOURCE_DIR}/3rdparty/mariadb/.git)
+if(NOT EDB_DEV)
   execute_process(
-    COMMAND git submodule update --init --depth=1 --recursive 3rdparty/mariadb
+    COMMAND git submodule update --init --depth=1 --recursive 3rdparty/edgeless-mariadb 3rdparty/edgeless-rocksdb
     WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
-endif ()
-
-execute_process(
-  COMMAND git submodule update --init --depth=1 --recursive 3rdparty/edgeless-rocksdb
-  WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+endif()
 
 ProcessorCount(NPROC)
 
@@ -96,7 +92,7 @@ if(NOT BUILD_TESTS)
 endif()
 
 ExternalProject_Add(mariadb
-  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/mariadb
+  SOURCE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/3rdparty/edgeless-mariadb
   BUILD_ALWAYS ON
   BINARY_DIR mariadb
   CMAKE_ARGS ${MARIADB_CMAKE_ARGS}
@@ -166,7 +162,7 @@ add_custom_target(genkey DEPENDS ${CMAKE_BINARY_DIR}/enclave.conf private.pem pu
 # build mariadbd (statically linked) for testing purposes
 #
 
-add_executable(mariadbd 3rdparty/mariadb/sql/main.cc)
+add_executable(mariadbd 3rdparty/edgeless-mariadb/sql/main.cc)
 add_dependencies(mariadbd mariadb)
 set_target_properties(mariadbd PROPERTIES EXCLUDE_FROM_ALL ON)
 
@@ -178,7 +174,7 @@ target_link_libraries(mariadbd
 # build emariadbd for testing purposes
 #
 
-add_executable(emariadbd 3rdparty/mariadb/sql/main.cc src/stubs.c)
+add_executable(emariadbd 3rdparty/edgeless-mariadb/sql/main.cc src/stubs.c)
 add_dependencies(emariadbd mariadb genkey)
 set_target_properties(emariadbd PROPERTIES EXCLUDE_FROM_ALL ON)
 
