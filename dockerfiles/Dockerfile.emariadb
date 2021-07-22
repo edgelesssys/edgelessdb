@@ -13,7 +13,7 @@ RUN --mount=type=secret,id=signingkey,dst=/mariadb/build/private.pem,required=tr
 # install
 WORKDIR /mariadb
 COPY ./my.cnf /etc/
-RUN mkdir -p /opt/mysql && build/mariadb/scripts/mysql_install_db --srcdir=3rdparty/mariadb --ldata=/opt/mysql/data --defaults-file=/etc/my.cnf --user=root --auth-root-authentication-method=normal
+RUN mkdir -p /opt/mysql && build/mariadb/scripts/mysql_install_db --srcdir=3rdparty/edgeless-mariadb --ldata=/opt/mysql/data --defaults-file=/etc/my.cnf --user=root --auth-root-authentication-method=normal
 
 
 FROM ghcr.io/edgelesssys/edgelessrt-deploy:nightly AS release
