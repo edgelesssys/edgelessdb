@@ -1,6 +1,6 @@
 package db
 
-//go:generate sh -c "./mariadb_gen_bootstrap.sh ../../server > mariadbbootstrap.go"
+//go:generate sh -c "./mariadb_gen_bootstrap.sh ../../3rdparty/edgeless-mariadb > mariadbbootstrap.go"
 
 import (
 	"crypto"
