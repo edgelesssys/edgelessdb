@@ -143,8 +143,13 @@ set(MARIADB_LIBC -static-libgcc -static-libstdc++
 if (NOT HEAPSIZE)
   set(HEAPSIZE 1024)
 endif()
+math(EXPR ENCLAVECONF_NUMHEAPPAGES "${HEAPSIZE} * 256")
 
-math(EXPR HEAPSIZE "${HEAPSIZE} * 256")
+set(ENCLAVECONF_DEBUG 1)
+if(PRODUCTION)
+  set(ENCLAVECONF_DEBUG 0)
+endif()
+
 configure_file(src/enclave.conf enclave.conf)
 
 #
@@ -152,11 +157,11 @@ configure_file(src/enclave.conf enclave.conf)
 #
 
 add_custom_command(
-  OUTPUT private.pem public.pem
+  OUTPUT private.pem
   COMMAND openssl genrsa -out private.pem -3 3072
   COMMAND openssl rsa -in private.pem -pubout -out public.pem)
 
-add_custom_target(genkey DEPENDS ${CMAKE_BINARY_DIR}/enclave.conf private.pem public.pem)
+add_custom_target(genkey DEPENDS ${CMAKE_BINARY_DIR}/enclave.conf private.pem)
 
 #
 # build mariadbd (statically linked) for testing purposes
@@ -223,7 +228,7 @@ add_custom_target(edb-golib
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/edb)
 
 add_executable(edb-enclave src/mysqld_main.cc src/stubs.c x86_64cpuid_.o)
-add_dependencies(edb-enclave edb-golib mariadb genkey)
+add_dependencies(edb-enclave edb-golib mariadb)
 
 target_link_libraries(edb-enclave
   openenclave::oeenclave
@@ -236,11 +241,13 @@ target_link_libraries(edb-enclave
   ${CMAKE_BINARY_DIR}/edb.a
   ${MARIADB_LIBS})
 
-add_custom_command(TARGET edb-enclave POST_BUILD
-  COMMAND openenclave::oesign sign -e $<TARGET_FILE:edb-enclave> -c
-          ${CMAKE_BINARY_DIR}/enclave.conf -k private.pem
-  COMMAND openenclave::oesign eradump -e edb-enclave.signed >
-          edb-enclave.json)
+add_custom_command(
+  OUTPUT edb-enclave.signed
+  DEPENDS edb-enclave genkey
+  COMMAND openenclave::oesign sign -e $<TARGET_FILE:edb-enclave> -c ${CMAKE_BINARY_DIR}/enclave.conf -k private.pem
+  COMMAND openenclave::oesign eradump -e edb-enclave.signed > edb-enclave.json)
+
+add_custom_target(sign-edb ALL DEPENDS edb-enclave.signed)
 
 configure_file(src/edb edb COPYONLY)
 

@@ -44,11 +44,23 @@ erthost emariadbd.signed --datadir=./data --default-storage-engine=rocksdb
 ### Build
 
 ```sh
-docker buildx build --secret id=signingkey,src=$HOME/private.pem --secret id=repoaccess,src=$HOME/.netrc --tag ghcr.io/edgelesssys/edb/edb -f dockerfiles/Dockerfile.edb .
+openssl genrsa -out private.pem -3 3072
+DOCKER_BUILDKIT=1 docker build -t ghcr.io/edgelesssys/edb --secret id=signingkey,src=private.pem --secret id=repoaccess,src=$HOME/.netrc - < Dockerfile
 ```
 
 ### Run
 
+SGX-FLC:
 ```sh
-docker run -p3306:3306 -p8080:8080 -it ghcr.io/edgelesssys/edb/edb
+docker run --name edb -p3306:3306 -p8080:8080 --privileged -v /dev/sgx:/dev/sgx -t ghcr.io/edgelesssys/edb
+```
+
+SGX-non-FLC:
+```sh
+docker run --name edb -p3306:3306 -p8080:8080 --device /dev/isgx -v /var/run/aesmd:/var/run/aesmd -t ghcr.io/edgelesssys/edb
+```
+
+Simulation mode:
+```sh
+docker run --name edb -p3306:3306 -p8080:8080 -e OE_SIMULATION=1 -t ghcr.io/edgelesssys/edb
 ```
