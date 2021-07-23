@@ -16,32 +16,32 @@ jobs:
       - name: Test
         run: go test ./...
 
-      - name: Deploy emariadb:nightly
-        if: github.ref == 'refs/heads/main' &&
-          github.event_name == 'push'
-        run: |
-          curl -X POST -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: token ${{ secrets.CI_GITHUB_REPOSITORY }}" \
-          -d '{"event_type": "docker-build",
-              "client_payload":{"repository":"edb",
-                                "sign":"nightly",
-                                "imagename":"emariadb",
-                                "tag":"nightly",
-                                "file": "dockerfiles/Dockerfile.emariadb",
-                                "target":"release"}}' \
-          https://api.github.com/repos/edgelesssys/deployment/dispatches
+      # - name: Deploy emariadb:nightly
+      #   if: github.ref == 'refs/heads/main' &&
+      #     github.event_name == 'push'
+      #   run: |
+      #     curl -X POST -H "Accept: application/vnd.github.v3+json" \
+      #     -H "Authorization: token ${{ secrets.CI_GITHUB_REPOSITORY }}" \
+      #     -d '{"event_type": "docker-build",
+      #         "client_payload":{"repository":"edb",
+      #                           "sign":"nightly",
+      #                           "imagename":"emariadb",
+      #                           "tag":"nightly",
+      #                           "file": "dockerfiles/Dockerfile.emariadb",
+      #                           "target":"release"}}' \
+      #     https://api.github.com/repos/edgelesssys/deployment/dispatches
 
-      - name: Deploy edb:nightly
-        if: github.ref == 'refs/heads/main' &&
-          github.event_name == 'push'
-        run: |
-          curl -X POST -H "Accept: application/vnd.github.v3+json" \
-          -H "Authorization: token ${{ secrets.CI_GITHUB_REPOSITORY }}" \
-          -d '{"event_type": "docker-build",
-              "client_payload":{"repository":"edb",
-                                "sign":"nightly",
-                                "imagename":"edb",
-                                "tag":"nightly",
-                                "file": "dockerfiles/Dockerfile.edb",
-                                "target":"release"}}' \
-          https://api.github.com/repos/edgelesssys/deployment/dispatches
+      # - name: Deploy edb:nightly
+      #   if: github.ref == 'refs/heads/main' &&
+      #     github.event_name == 'push'
+      #   run: |
+      #     curl -X POST -H "Accept: application/vnd.github.v3+json" \
+      #     -H "Authorization: token ${{ secrets.CI_GITHUB_REPOSITORY }}" \
+      #     -d '{"event_type": "docker-build",
+      #         "client_payload":{"repository":"edb",
+      #                           "sign":"nightly",
+      #                           "imagename":"edb",
+      #                           "tag":"nightly",
+      #                           "file": "dockerfiles/Dockerfile.edb",
+      #                           "target":"release"}}' \
+      #     https://api.github.com/repos/edgelesssys/deployment/dispatches

@@ -25,12 +25,18 @@ RUN cd edgelessrt && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /
   && ninja install
 
 # build edb
-ARG heapsize=1024
-RUN --mount=type=secret,id=signingkey,dst=/edbbuild/private.pem,required=true \
-  cd edb && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /edbbuild \
+RUN cd edb && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /edbbuild \
   && . /opt/edgelessrt/share/openenclave/openenclaverc \
-  && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF -DHEAPSIZE=$heapsize /edb \
+  && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF /edb \
   && make -j`nproc` edb-enclave
+
+# sign edb
+ARG heapsize=1024 production=OFF
+RUN --mount=type=secret,id=signingkey,dst=/edbbuild/private.pem,required=true \
+  cd edbbuild \
+  && . /opt/edgelessrt/share/openenclave/openenclaverc \
+  && cmake -DHEAPSIZE=$heapsize -DPRODUCTION=$production /edb \
+  && make sign-edb
 
 # deploy
 FROM ubuntu:focal-20210713
