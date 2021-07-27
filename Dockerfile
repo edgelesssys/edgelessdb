@@ -40,7 +40,7 @@ RUN --mount=type=secret,id=signingkey,dst=/edbbuild/private.pem,required=true \
 
 # deploy
 FROM ubuntu:focal-20210713
-ARG PSW_VERSION=2.14.100.2-focal1 DCAP_VERSION=1.10.103.1-focal1
+ARG PSW_VERSION=2.13.103.1-focal1 DCAP_VERSION=1.10.103.1-focal1
 RUN apt update && apt install -y gnupg wget \
   && wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add \
   && echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' >> /etc/apt/sources.list \
