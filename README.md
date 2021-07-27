@@ -1,66 +1,32 @@
-# EDB
+# EdgelessDB
+[EdgelessDB](https://edgeless.systems/products/edgelessdb) (EDB) is a MySQL-compatible database for [confidential computing](https://confidentialcomputing.io) (CC). It's based on [MariaDB](https://github.com/MariaDB/server) with [MyRocks](https://mariadb.com/kb/en/myrocks) storage engine.
 
-## Build
-### Requirements
-Feel free to add missing ones! This is based on our `ghcr.io/edgelesssys/edgelessrt-dev:nightly` image.
+## Key features
+* Always encrypted: in addition to authenticated encryption on disk, the data is also encrypted in memory at runtime.
+* Manifest: defines the initial database state. This enables [new kinds of applications](https://edgeless.systems/products/edgelessdb).
+* Remote attestation: proves that the EDB instance runs in a secure enclave and enforces the manifest.
+
+For details see [concepts](TODO).
+
+## Getting started
+Run EDB on an SGX-capable system:
 ```sh
-sudo apt install libncurses5-dev libcurl4-openssl-dev bison liblz4-dev bbe
+docker run --name my-edb -p3306:3306 -p8080:8080 --privileged -v /dev/sgx:/dev/sgx -t ghcr.io/edgelesssys/edb-sgx-1gb
 ```
 
-### Build
+Or try it in simulation mode on any system:
 ```sh
-mkdir build
-cd build
-cmake ..
-make -j`nproc`
+docker run --name my-edb -p3306:3306 -p8080:8080 -e OE_SIMULATION=1 -t ghcr.io/edgelesssys/edb-sgx-1gb
 ```
 
-## Test
+You may want to start with [using EDB as a high-security SQL database](TODO) in a possibly untrusted environment.
 
-### EDB tests
-```sh
-cd build
-ctest --output-on-failure
-```
+Or [check out the demo](demo) to see how EDB's CC features can be used for secure multi-party data processing.
 
-### MariaDB tests
-*Prerequisite*: A fresh EDB instance with default config is running.
-```sh
-curl -k -d@src/test_manifest.json https://127.0.0.1:8080/manifest
-cd build/mariadb
-MYSQL_TEST_TLS=1 ctest --output-on-failure
-```
+## Documentation
+See [the docs](https://docs.edgeless.systems/edb) for details on EDB concepts, configuration, and usage.
 
-### Run emariadbd
-```sh
-cd build
-make emariadbd
-mariadb/scripts/mysql_install_db --srcdir=../3rdparty/mariadb --auth-root-authentication-method=normal
-erthost emariadbd.signed --datadir=./data --default-storage-engine=rocksdb
-```
+## Contribute
+Read [CONTRIBUTING.md](CONTRIBUTING.md) for information on issue reporting, code guidelines, and our PR process.
 
-## Docker images
-
-### Build
-
-```sh
-openssl genrsa -out private.pem -3 3072
-DOCKER_BUILDKIT=1 docker build -t ghcr.io/edgelesssys/edb --secret id=signingkey,src=private.pem --secret id=repoaccess,src=$HOME/.netrc - < Dockerfile
-```
-
-### Run
-
-SGX-FLC:
-```sh
-docker run --name edb -p3306:3306 -p8080:8080 --privileged -v /dev/sgx:/dev/sgx -t ghcr.io/edgelesssys/edb
-```
-
-SGX-non-FLC:
-```sh
-docker run --name edb -p3306:3306 -p8080:8080 --device /dev/isgx -v /var/run/aesmd:/var/run/aesmd -t ghcr.io/edgelesssys/edb
-```
-
-Simulation mode:
-```sh
-docker run --name edb -p3306:3306 -p8080:8080 -e OE_SIMULATION=1 -t ghcr.io/edgelesssys/edb
-```
+[BUILD.md](BUILD.md) includes general information on how to work in this repo.
