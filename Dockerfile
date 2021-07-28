@@ -61,6 +61,6 @@ RUN apt update && apt install -y gnupg wget \
   libsgx-urts=$PSW_VERSION
 COPY --from=build /edbbuild/edb /edbbuild/edb-enclave.signed /
 COPY --from=build /opt/edgelessrt/bin/erthost /opt/edgelessrt/bin/
-ENV PATH=${PATH}:/opt/edgelessrt/bin
+ENV PATH=${PATH}:/opt/edgelessrt/bin AZDCAP_DEBUG_LOG_LEVEL=error
 ENTRYPOINT ["./edb"]
 EXPOSE 3306 8080
