@@ -13,10 +13,9 @@ RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   ninja-build=1.10.0-1build1 \
   zlib1g-dev=1:1.2.11.dfsg-2ubuntu1.2
 
-ARG erttag=v0.2.5 edbtag=main
-RUN --mount=type=secret,id=repoaccess,dst=/root/.netrc,required=true \
-  git clone -b $edbtag --depth=1 --recurse-submodules --shallow-submodules https://github.com/edgelesssys/edb
+ARG erttag=v0.2.6 edbtag=v0.1.0
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
+  && git clone -b $edbtag --depth=1 https://github.com/edgelesssys/edb \
   && mkdir ertbuild edbbuild
 
 # install ert

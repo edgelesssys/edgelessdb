@@ -1,7 +1,7 @@
 # EDB demo walkthrough
 This demo shows how to initialize EDB with a manifest and how users verify and connect to EDB.
 
-Familiarize yourself with the EDB [concepts](TODO) before proceeding.
+Familiarize yourself with the EDB [concepts](https://docs.edgeless.systems/edgelessdb/#/getting-started/concepts) before proceeding.
 
 We consider these roles:
 * The *owner* creates the manifest and initializes EDB

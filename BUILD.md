@@ -4,7 +4,7 @@
 Generate a signing key and build the image:
 ```sh
 openssl genrsa -out private.pem -3 3072
-DOCKER_BUILDKIT=1 docker build -t edb --secret id=signingkey,src=private.pem --secret id=repoaccess,src=$HOME/.netrc - < Dockerfile
+DOCKER_BUILDKIT=1 docker build -t edb --secret id=signingkey,src=private.pem - < Dockerfile
 ```
 
 Add `--build-arg heapsize=x` where x is the desired enclave heap size in MB. By default, heap size is 1024 MB.
