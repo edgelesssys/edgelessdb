@@ -1,10 +1,10 @@
-<img src="logo.svg" alt="logo" width="40%">
-
-# Introduction
-
+EdgelessDB
 [![Unit Tests][unit-tests-badge]][unit-tests]
 [![GitHub license][license-badge]](LICENSE)
 [![Discord Chat][discord-badge]][discord]
+==
+
+<img src="logo.svg" alt="logo" width="40%">
 
 [EdgelessDB](https://edgeless.systems/products/edgelessdb) (EDB) is a MySQL-compatible database for [confidential computing](https://confidentialcomputing.io) (CC). It's based on [MariaDB](https://github.com/MariaDB/server) with [MyRocks](https://mariadb.com/kb/en/myrocks) storage engine.
 
