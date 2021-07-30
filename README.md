@@ -1,4 +1,4 @@
-<img src="logo.svg" alt="logo" width="30%">
+<img src="logo.svg" alt="logo" width="40%">
 
 # Introduction
 
