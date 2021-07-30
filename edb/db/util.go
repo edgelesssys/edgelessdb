@@ -27,7 +27,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/edgelesssys/edb/edb/util"
+	"github.com/edgelesssys/edgelessdb/edb/util"
 )
 
 func splitHostPort(address, defaultPort string) (host, port string) {

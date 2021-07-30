@@ -15,7 +15,7 @@ RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
 
 ARG erttag=v0.2.6 edbtag=v0.1.0
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
-  && git clone -b $edbtag --depth=1 https://github.com/edgelesssys/edb \
+  && git clone -b $edbtag --depth=1 https://github.com/edgelesssys/edgelessdb \
   && mkdir ertbuild edbbuild
 
 # install ert
@@ -26,7 +26,7 @@ RUN cd edgelessrt && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /
 # build edb
 RUN cd edb && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /edbbuild \
   && . /opt/edgelessrt/share/openenclave/openenclaverc \
-  && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF /edb \
+  && cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTS=OFF /edgelessdb \
   && make -j`nproc` edb-enclave
 
 # sign edb
@@ -34,7 +34,7 @@ ARG heapsize=1024 production=OFF
 RUN --mount=type=secret,id=signingkey,dst=/edbbuild/private.pem,required=true \
   cd edbbuild \
   && . /opt/edgelessrt/share/openenclave/openenclaverc \
-  && cmake -DHEAPSIZE=$heapsize -DPRODUCTION=$production /edb \
+  && cmake -DHEAPSIZE=$heapsize -DPRODUCTION=$production /edgelessdb \
   && make sign-edb
 
 # deploy

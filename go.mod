@@ -1,4 +1,4 @@
-module github.com/edgelesssys/edb
+module github.com/edgelesssys/edgelessdb
 
 go 1.14
 

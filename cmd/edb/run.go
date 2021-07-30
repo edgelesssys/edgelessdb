@@ -16,9 +16,9 @@
 package main
 
 import (
-	"github.com/edgelesssys/edb/edb/core"
-	"github.com/edgelesssys/edb/edb/db"
-	"github.com/edgelesssys/edb/edb/server"
+	"github.com/edgelesssys/edgelessdb/edb/core"
+	"github.com/edgelesssys/edgelessdb/edb/db"
+	"github.com/edgelesssys/edgelessdb/edb/server"
 	"github.com/fatih/color"
 	"github.com/spf13/afero"
 )

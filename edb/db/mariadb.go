@@ -33,7 +33,7 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/edgelesssys/edb/edb/rt"
+	"github.com/edgelesssys/edgelessdb/edb/rt"
 	_ "github.com/go-sql-driver/mysql" // import driver used via the database/sql package
 )
 

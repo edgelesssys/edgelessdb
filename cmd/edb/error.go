@@ -22,8 +22,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/edgelesssys/edb/edb/core"
-	"github.com/edgelesssys/edb/edb/db"
+	"github.com/edgelesssys/edgelessdb/edb/core"
+	"github.com/edgelesssys/edgelessdb/edb/db"
 	"github.com/fatih/color"
 )
 

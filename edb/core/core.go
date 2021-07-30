@@ -35,9 +35,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/edgelesssys/edb/edb/db"
-	"github.com/edgelesssys/edb/edb/rt"
-	"github.com/edgelesssys/edb/edb/util"
+	"github.com/edgelesssys/edgelessdb/edb/db"
+	"github.com/edgelesssys/edgelessdb/edb/rt"
+	"github.com/edgelesssys/edgelessdb/edb/util"
 	"github.com/edgelesssys/ego/marble"
 	"github.com/spf13/afero"
 )

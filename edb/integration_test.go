@@ -48,8 +48,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/edgelesssys/edb/edb/core"
-	"github.com/edgelesssys/edb/edb/db"
+	"github.com/edgelesssys/edgelessdb/edb/core"
+	"github.com/edgelesssys/edgelessdb/edb/db"
 	"github.com/edgelesssys/ego/marble"
 	"github.com/edgelesssys/era/era"
 	"github.com/edgelesssys/marblerun/coordinator/rpc"

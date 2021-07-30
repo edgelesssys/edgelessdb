@@ -29,9 +29,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/edgelesssys/edb/edb/core"
-	"github.com/edgelesssys/edb/edb/db"
-	"github.com/edgelesssys/edb/edb/rt"
+	"github.com/edgelesssys/edgelessdb/edb/core"
+	"github.com/edgelesssys/edgelessdb/edb/db"
+	"github.com/edgelesssys/edgelessdb/edb/rt"
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
