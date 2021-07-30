@@ -1,4 +1,6 @@
-# EdgelessDB
+<img src="logo.svg" alt="logo" width="30%">
+
+# Introduction
 
 [![Unit Tests][unit-tests-badge]][unit-tests]
 [![GitHub license][license-badge]](LICENSE)
