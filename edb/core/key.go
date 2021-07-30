@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/edgelesssys/edb/edb/rt"
+	"github.com/edgelesssys/edgelessdb/edb/rt"
 	"github.com/edgelesssys/ego/ecrypto"
 )
 

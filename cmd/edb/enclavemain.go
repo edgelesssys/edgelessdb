@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/edgelesssys/edb/edb/core"
+	"github.com/edgelesssys/edgelessdb/edb/core"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/edgelesssys/marblerun/marble/premain"
 )

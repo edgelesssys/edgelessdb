@@ -25,7 +25,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/edgelesssys/edb/edb/core"
+	"github.com/edgelesssys/edgelessdb/edb/core"
 )
 
 type generalResponse struct {

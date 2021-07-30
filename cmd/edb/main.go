@@ -26,7 +26,7 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/edgelesssys/edb/edb/core"
+	"github.com/edgelesssys/edgelessdb/edb/core"
 	"github.com/edgelesssys/marblerun/marble/premain"
 )
 
