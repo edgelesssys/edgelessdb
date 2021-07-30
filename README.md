@@ -8,7 +8,7 @@
 
 [EdgelessDB](https://edgeless.systems/products/edgelessdb) (EDB) is a MySQL-compatible database for [confidential computing](https://confidentialcomputing.io) (CC). It's based on [MariaDB](https://github.com/MariaDB/server) with [MyRocks](https://mariadb.com/kb/en/myrocks) storage engine.
 
-## Key features
+### Key features
 * Always encrypted: in addition to authenticated encryption on disk, the data is also encrypted in memory at runtime.
 * Manifest: defines the initial database state. This enables [new kinds of applications](https://edgeless.systems/products/edgelessdb).
 * Remote attestation: proves that the EDB instance runs in a secure enclave and enforces the manifest.
