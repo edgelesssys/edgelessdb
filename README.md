@@ -1,4 +1,9 @@
 # EdgelessDB
+
+[![Unit Tests][unit-tests-badge]][unit-tests]
+[![GitHub license][license-badge]](LICENSE)
+[![Discord Chat][discord-badge]][discord]
+
 [EdgelessDB](https://edgeless.systems/products/edgelessdb) (EDB) is a MySQL-compatible database for [confidential computing](https://confidentialcomputing.io) (CC). It's based on [MariaDB](https://github.com/MariaDB/server) with [MyRocks](https://mariadb.com/kb/en/myrocks) storage engine.
 
 ## Key features
@@ -30,3 +35,10 @@ See [the docs](https://docs.edgeless.systems/edgelessdb) for details on EDB conc
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for information on issue reporting, code guidelines, and our PR process.
 
 [BUILD.md](BUILD.md) includes general information on how to work in this repo.
+
+<!-- refs -->
+[unit-tests]: https://github.com/edgelesssys/edgelessdb/actions
+[unit-tests-badge]: https://github.com/edgelesssys/edgelessdb/workflows/Unit%20Tests/badge.svg
+[license-badge]: https://img.shields.io/github/license/edgelesssys/edgelessdb
+[discord]: https://discord.gg/rH8QTH56JN
+[discord-badge]: https://img.shields.io/badge/chat-on%20Discord-blue
