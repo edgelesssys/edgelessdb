@@ -12,7 +12,7 @@ Add `--build-arg heapsize=x` where x is the desired enclave heap size in MB. By 
 Add `--build-arg production=ON` to build a production enclave. By default, a debug enclave is built.
 
 ## Run the Docker image
-You can run EDB in simulation mode on any system:
+You can run EdgelessDB in simulation mode on any system:
 ```sh
 docker run --name my-edb -p3306:3306 -p8080:8080 -e OE_SIMULATION=1 -t edb
 ```
@@ -46,16 +46,16 @@ You may add the following flags to the `cmake` command:
 * `-DPRODUCTION=ON` to build a production enclave.
 
 ## Test
-EDB tests verify basic SQL functionality and all of the additional CC features. In addition, we use MariaDB tests to ensure that we retain compatibility.
+EdgelessDB tests verify basic SQL functionality and all of the additional CC features. In addition, we use MariaDB tests to ensure that we retain compatibility.
 
-### EDB tests
+### EdgelessDB tests
 ```sh
 cd build
 ctest --output-on-failure
 ```
 
 ### MariaDB tests
-*Prerequisite*: A fresh EDB instance with default config is running.
+*Prerequisite*: A fresh EdgelessDB instance with default config is running.
 ```sh
 curl -k -d@src/test_manifest.json https://127.0.0.1:8080/manifest
 cd build/mariadb
@@ -63,7 +63,7 @@ MYSQL_TEST_TLS=1 ctest --output-on-failure
 ```
 
 ## Run emariadbd
-During development it may be useful to run emariadbd. This is mariadbd inside the enclave, but without the additional EDB functionality.
+During development it may be useful to run emariadbd. This is mariadbd inside the enclave, but without the additional EdgelessDB functionality.
 ```sh
 cd build
 make emariadbd

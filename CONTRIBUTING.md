@@ -8,7 +8,7 @@ If you want to support our development:
 * Share our projects on social media
 * Join the [Confidential Computing Discord](https://discord.gg/rH8QTH56JN)
 
-EDB is licensed under [GPLv2](LICENSE). When contributing, you also need to agree to our [Contributor License Agreement](https://cla-assistant.io/edgelesssys/edgelessdb).
+EdgelessDB is licensed under [GPLv2](LICENSE). When contributing, you also need to agree to our [Contributor License Agreement](https://cla-assistant.io/edgelesssys/edgelessdb).
 
 ## Development guidelines
 Adhere to the style and best practices described in [Effective Go](https://golang.org/doc/effective_go.html). Read [Common Review Comments](https://github.com/golang/go/wiki/CodeReviewComments) for further information.

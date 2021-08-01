@@ -21,7 +21,7 @@ Architecturally, EdgelessDB is based on [MariaDB](https://github.com/MariaDB/ser
 
 * Always encrypted: in addition to authenticated encryption on disk, the data is also encrypted in memory at runtime.
 * Manifest: defines the initial database state. This enables [new kinds of applications](https://edgeless.systems/products/edgelessdb).
-* Remote attestation: proves that the EDB instance runs in a secure enclave and enforces the manifest.
+* Remote attestation: proves that the EdgelessDB instance runs in a secure enclave and enforces the manifest.
 
 For details see [concepts](https://docs.edgeless.systems/edgelessdb/#/getting-started/concepts).
 
@@ -43,7 +43,7 @@ Or [check out the demo](demo) to see how EdgelessDB's confidential-computing fea
 
 ## Documentation
 
-See [the docs](https://docs.edgeless.systems/edgelessdb) for details on EDB concepts, configuration, and usage.
+See [the docs](https://docs.edgeless.systems/edgelessdb) for details on EdgelessDB concepts, configuration, and usage.
 
 ## Contribute
 

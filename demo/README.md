@@ -1,24 +1,24 @@
-# EDB demo walkthrough
-This demo shows how to initialize EDB with a manifest and how users verify and connect to EDB.
+# EdgelessDB demo walkthrough
+This demo shows how to initialize EdgelessDB with a manifest and how users verify and connect to EdgelessDB.
 
-Familiarize yourself with the EDB [concepts](https://docs.edgeless.systems/edgelessdb/#/getting-started/concepts) before proceeding.
+Familiarize yourself with the EdgelessDB [concepts](https://docs.edgeless.systems/edgelessdb/#/getting-started/concepts) before proceeding.
 
 We consider these roles:
-* The *owner* creates the manifest and initializes EDB
+* The *owner* creates the manifest and initializes EdgelessDB
 * *Readers* can read data from a set of tables
 * *Writers* can write to a set of tables (but not read)
 
 *Prerequisite*: [era](https://github.com/edgelesssys/era) and [mysql-client](https://packages.ubuntu.com/focal/mysql-client) are installed.
 
 ## Generate keys and certificates
-EDB identifies clients based on their X.509 certificates. The owner includes the CA certificate(s) of the client certificates in the manifest.
+EdgelessDB identifies clients based on their X.509 certificates. The owner includes the CA certificate(s) of the client certificates in the manifest.
 
 Generate all required keys and certificates for this demo by:
 ```sh
 ./genkeys.sh
 ```
 
-## Owner: Initialize EDB with the manifest
+## Owner: Initialize EdgelessDB with the manifest
 The `genkeys.sh` script also adds the CA certificate to `manifest.json`, yielding this manifest:
 ```json
 {
@@ -34,17 +34,17 @@ The `genkeys.sh` script also adds the CA certificate to `manifest.json`, yieldin
 }
 ```
 
-When you initialize EDB with this manifest, EDB will use `ca` to verify client certificates and execute the `sql` statements. The initial state of the database will thus consist of the table `test.data` and two users `reader` and `writer`.
+When you initialize EdgelessDB with this manifest, EdgelessDB will use `ca` to verify client certificates and execute the `sql` statements. The initial state of the database will thus consist of the table `test.data` and two users `reader` and `writer`.
 
-Get the attested EDB root certificate and initialize EDB with the manifest:
+Get the attested EdgelessDB root certificate and initialize EdgelessDB with the manifest:
 ```
 cd owner
 era -c ../edb-enclave.json -h localhost:8080 -output-root edb.pem
 curl --cacert edb.pem --data-binary @../manifest.json https://localhost:8080/manifest
 ```
 
-## Writer: Verify EDB, connect with mysql, and add data
-Get the attested EDB root certificate and verify the manifest signature:
+## Writer: Verify EdgelessDB, connect with mysql, and add data
+Get the attested EdgelessDB root certificate and verify the manifest signature:
 ```
 $ cd ../writer
 
@@ -58,7 +58,7 @@ $ sha256sum ../manifest.json
 5a646b895b1ead16ae16530e54180267de441ccd0198889471a5713a4a679c23  ../manifest.json
 ```
 
-Note that the hash sums are equal. This proves that EDB has been initialized with this manifest.
+Note that the hash sums are equal. This proves that EdgelessDB has been initialized with this manifest.
 
 Connect with `mysql` and add data:
 ```
@@ -75,8 +75,8 @@ mysql> quit
 
 Note that the writer can insert data, but not read it.
 
-## Reader: Verify EDB, connect with mysql, and use data
-First, get the attested EDB root certificate and verify the manifest signature like you did for the writer. Then connect with `mysql` and use the data:
+## Reader: Verify EdgelessDB, connect with mysql, and use data
+First, get the attested EdgelessDB root certificate and verify the manifest signature like you did for the writer. Then connect with `mysql` and use the data:
 ```
 $ cd ../reader
 
