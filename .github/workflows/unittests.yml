@@ -10,13 +10,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/edgelesssys/edgelessrt-dev:nightly
+      image: ghcr.io/edgelesssys/edgelessrt-dev:ci
     steps:
       - name: Check out code
         uses: actions/checkout@v2
-
-      - name: Test
-        run: go test ./...
 
       - name: Setup Build Environment
         run: |
@@ -30,8 +27,9 @@ jobs:
           make -j`nproc`
         working-directory: build
 
-      - name: Integration Test
-        run: OE_SIMULATION=1 go test -v -tags integration ./edb -e ../build/edb
+      - name: Test
+        run: OE_SIMULATION=1 ctest --output-on-failure
+        working-directory: build
 
       # - name: Deploy emariadb:nightly
       #   if: github.ref == 'refs/heads/main' &&
