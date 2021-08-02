@@ -28,6 +28,11 @@ docker run --name my-edb -p3306:3306 -p8080:8080 --device /dev/isgx -v /var/run/
 ```
 Note that you'll get attestation errors on such systems.
 
+## Nightly Docker images
+Use these images to try the latest changes from the main branch:
+* `ghcr.io/edgelesssys/edgelessdb-debug-1gb:nightly`
+* `ghcr.io/edgelesssys/edgelessdb-debug-4gb:nightly`
+
 ## Build from source
 *Prerequisite*: [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced.
 
