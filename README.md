@@ -8,7 +8,7 @@ EdgelessDB
 
 [EdgelessDB](https://edgeless.systems/products/edgelessdb) is a MySQL-compatible database for [confidential computing](https://confidentialcomputing.io). EdgelessDB runs entirely inside runtime-encrypted Intel SGX enclaves. In contrast to other databases, EdgelessDB ensures that all data is always strongly encrypted - in memory as well as on disk. Despite running in enclaves, EdgelessDB doesn't have storage constraints and delivers close to native performance.
 
-Central to EdgelessDB is the concept of a *manifest*. The manifest is defined in JSON and is somewhat akin to a smart contract. It defines in an attestable way the initial state of the database, including access control.
+Central to EdgelessDB is the concept of a *manifest*. The manifest is defined in JSON and is similar to a smart contract. It defines the initial state of the database, including access control, in an attestable way.
 
 Architecturally, EdgelessDB is based on [MariaDB](https://github.com/MariaDB/server). As storage engine, it uses an enhanced version of [RocksDB](https://rocksdb.org/). The file encryption of EdgelessDB's storage engine is designed and built for the enclave and its very strong attacker model. In this context, EdgelessDB's storage engine provides confidentiality, integrity, freshness, auditability, and recoverability for data. Other databases (even when being run inside enclaves using general-purpose frameworks) do not have these security properties.
 
