@@ -135,7 +135,7 @@ func (c *Core) GetTLSConfig() *tls.Config {
 
 // Initialize sets up a database according to the jsonManifest.
 func (c *Core) Initialize(jsonManifest []byte) ([]byte, error) {
-	// Encrypt recovery key if certificate is provided.
+	// Encrypt recovery key if public key is provided.
 	var man struct{ Recovery string }
 	if err := json.Unmarshal(jsonManifest, &man); err != nil {
 		return nil, err
