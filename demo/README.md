@@ -8,7 +8,9 @@ We consider these roles:
 * *Readers* can read data from a set of tables
 * *Writers* can write to a set of tables (but not read)
 
-*Prerequisite*: [era](https://github.com/edgelesssys/era) and [mysql-client](https://packages.ubuntu.com/focal/mysql-client) are installed.
+Prerequisites:
+* EdgelessDB is [installed](https://docs.edgeless.systems/edgelessdb/#/getting-started/install) and running
+* [era](https://github.com/edgelesssys/era) and [mysql-client](https://packages.ubuntu.com/focal/mysql-client) are installed
 
 ## Generate keys and certificates
 EdgelessDB identifies clients based on their X.509 certificates. The owner includes the CA certificate(s) of the client certificates in the manifest.
