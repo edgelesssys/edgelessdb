@@ -223,13 +223,8 @@ func (c *Core) getConfigForClient(chi *tls.ClientHelloInfo) (*tls.Config, error)
 
 	hostname := chi.ServerName
 	if hostname == "" {
-		// use CommonName of root certificate if client did not send ServerName
-		if c, err := x509.ParseCertificate(signerCert); err != nil {
-			hostname = c.Subject.CommonName
-		} else {
-			// can't happen
-			hostname = "localhost"
-		}
+		// use configured DNS name if client did not send ServerName
+		hostname = c.cfg.CertificateDNSName
 	}
 
 	var ips []net.IP
@@ -287,7 +282,7 @@ func createCertificate(hostname string, ips []net.IP, signerCert []byte, signerK
 	}
 	template := &x509.Certificate{
 		SerialNumber: serialNumber,
-		Subject:      pkix.Name{CommonName: hostname},
+		Subject:      pkix.Name{Organization: []string{"EDB ephemeral"}, CommonName: hostname},
 		NotAfter:     time.Now().Add(time.Hour),
 		DNSNames:     []string{hostname},
 		IPAddresses:  ips,
