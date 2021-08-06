@@ -25,10 +25,10 @@ import (
 
 func TestFillConfigFromEnvironment(t *testing.T) {
 	config := Config{
-		DataPath:              "data",
-		DatabaseAddress:       "127.0.0.1",
-		APIAddress:            "127.0.0.1:8080",
-		CertificateCommonName: "localhost",
+		DataPath:           "data",
+		DatabaseAddress:    "127.0.0.1",
+		APIAddress:         "127.0.0.1:8080",
+		CertificateDNSName: "localhost",
 	}
 
 	assert := assert.New(t)
@@ -51,11 +51,11 @@ func TestFillConfigFromEnvironment(t *testing.T) {
 	require.NoError(os.Setenv(EnvAPIAddress, "1.2.3.4:1234"))
 	require.NoError(os.Setenv(EnvDataPath, "edbTestDataPath"))
 	require.NoError(os.Setenv(EnvDatabaseAddress, "1.2.3.4"))
-	require.NoError(os.Setenv(EnvCertificateCommonName, "mytest-cn"))
+	require.NoError(os.Setenv(EnvCertificateDNSName, "mytest-cn"))
 
 	newConfig = FillConfigFromEnvironment(config)
 	assert.Equal("1.2.3.4:1234", newConfig.APIAddress)
 	assert.Equal("edbTestDataPath", newConfig.DataPath)
 	assert.Equal("1.2.3.4", newConfig.DatabaseAddress)
-	assert.Equal("mytest-cn", newConfig.CertificateCommonName)
+	assert.Equal("mytest-cn", newConfig.CertificateDNSName)
 }

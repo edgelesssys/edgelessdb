@@ -77,7 +77,7 @@ type Mariadb struct {
 }
 
 // NewMariadb creates a new Mariadb object.
-func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateCommonName, logDir string, debug bool, isMarble bool, mariadbd Mariadbd) (*Mariadb, error) {
+func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateDNSName, logDir string, debug bool, isMarble bool, mariadbd Mariadbd) (*Mariadb, error) {
 	if err := os.MkdirAll(externalPath, 0700); err != nil {
 		return nil, err
 	}
@@ -100,7 +100,7 @@ func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, ce
 		cert, key, err = setupCertificateFromMarblerun()
 	} else {
 		// Otherweise in standalone mode, we generate this here
-		cert, key, err = createCertificate(certificateCommonName)
+		cert, key, err = createCertificate(certificateDNSName)
 	}
 	if err != nil {
 		return nil, err

@@ -66,16 +66,16 @@ func toPEM(cert []byte, key crypto.PrivateKey) (pemCert, pemKey []byte, err erro
 	return
 }
 
-func createCertificate(commonName string) ([]byte, crypto.PrivateKey, error) {
+func createCertificate(dnsName string) ([]byte, crypto.PrivateKey, error) {
 	serialNumber, err := util.GenerateCertificateSerialNumber()
 	if err != nil {
 		return nil, nil, err
 	}
 	template := &x509.Certificate{
 		SerialNumber:          serialNumber,
-		Subject:               pkix.Name{Organization: []string{"EDB root"}, CommonName: commonName},
+		Subject:               pkix.Name{Organization: []string{"EDB root"}, CommonName: dnsName},
 		NotAfter:              time.Now().AddDate(10, 0, 0),
-		DNSNames:              []string{commonName},
+		DNSNames:              []string{dnsName},
 		BasicConstraintsValid: true,
 		IsCA:                  true,
 	}
