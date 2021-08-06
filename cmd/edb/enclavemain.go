@@ -43,11 +43,11 @@ func main() {
 	}
 
 	config := core.Config{
-		DataPath:              "data",
-		APIAddress:            ":8080",
-		CertificateCommonName: "localhost",
-		Debug:                 false,
-		LogDir:                "",
+		DataPath:           "data",
+		APIAddress:         ":8080",
+		CertificateDNSName: "localhost",
+		Debug:              false,
+		LogDir:             "",
 	}
 
 	// Load config parameters from environment variables

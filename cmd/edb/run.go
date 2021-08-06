@@ -24,7 +24,7 @@ import (
 )
 
 func run(cfg core.Config, isMarble bool, internalPath string, internalAddress string) {
-	db, err := db.NewMariadb(internalPath, cfg.DataPath, internalAddress, cfg.DatabaseAddress, cfg.CertificateCommonName, cfg.LogDir, cfg.Debug, isMarble, mariadbd{})
+	db, err := db.NewMariadb(internalPath, cfg.DataPath, internalAddress, cfg.DatabaseAddress, cfg.CertificateDNSName, cfg.LogDir, cfg.Debug, isMarble, mariadbd{})
 	if err != nil {
 		panic(err)
 	}
