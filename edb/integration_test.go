@@ -787,7 +787,7 @@ func postManifest(serverCert string, manifest []byte, waitForRestart bool) ([]by
 
 func postRecoveryKey(serverCert string, key []byte) error {
 	client := createHttpClient(serverCert)
-	url := url.URL{Scheme: "https", Host: addrAPI, Path: "recovery"}
+	url := url.URL{Scheme: "https", Host: addrAPI, Path: "recover"}
 
 	log.Print("posting recovery key ...")
 	resp, err := client.Post(url.String(), "", bytes.NewReader(key))

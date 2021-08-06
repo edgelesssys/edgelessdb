@@ -77,7 +77,7 @@ func CreateServeMux(core *core.Core) *http.ServeMux {
 		writeJSON(w, certQuoteResp{cert, report})
 	})
 
-	mux.HandleFunc("/recovery", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/recover", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodPost {
 			http.Error(w, http.StatusText(http.StatusMethodNotAllowed), http.StatusMethodNotAllowed)
 			return
