@@ -26,6 +26,7 @@ import (
 	"net/http"
 
 	"github.com/edgelesssys/edgelessdb/edb/core"
+	"github.com/edgelesssys/edgelessdb/edb/rt"
 )
 
 type generalResponse struct {
@@ -107,7 +108,8 @@ func RunServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) {
 		TLSConfig: tlsConfig,
 	}
 
-	fmt.Println(server.ListenAndServeTLS("", ""))
+	rt.Log.Println("HTTP REST API listening on", address)
+	rt.Log.Println(server.ListenAndServeTLS("", ""))
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {
