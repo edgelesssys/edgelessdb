@@ -202,7 +202,8 @@ func (c *Core) StartDatabase() error {
 	var err error
 	c.report, err = c.rt.GetRemoteReport(hash[:])
 	if err != nil {
-		fmt.Printf("Failed to get quote: %v\n", err)
+		rt.Log.Printf("Failed to get quote: %v", err)
+		rt.Log.Print("Attestation will not be available.")
 	}
 	return nil
 }
