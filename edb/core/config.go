@@ -27,6 +27,7 @@ type Config struct {
 	CertificateDNSName string `json:",omitempty"`
 	Debug              bool   `json:",omitempty"`
 	LogDir             string `json:",omitempty"`
+	ManifestFilePath   string `json:",omitempty"`
 }
 
 // EnvDataPath is the name of the optional environment variable holding the data path for edb
@@ -47,6 +48,9 @@ const EnvDebug = "EDG_EDB_DEBUG"
 // EnvLogDir is the name of the optional environment variable holding the path for storing the log files
 const EnvLogDir = "EDG_EDB_LOG_DIR"
 
+// EnvManifestFile holds the path to the manifest file in case we want edb to automatically deploy one
+const EnvManifestFile = "EDG_EDB_MANIFEST_FILE"
+
 // FillConfigFromEnvironment takes an existing config filled with defaults and replaces single values based on environment variables.
 func FillConfigFromEnvironment(config Config) Config {
 	envDataPath := os.Getenv(EnvDataPath)
@@ -55,6 +59,7 @@ func FillConfigFromEnvironment(config Config) Config {
 	envCertificateDNSName := os.Getenv(EnvCertificateDNSName)
 	envDebug := os.Getenv(EnvDebug)
 	envLogDir := os.Getenv(EnvLogDir)
+	envManifestFilePath := os.Getenv(EnvManifestFile)
 
 	if envDataPath != "" {
 		config.DataPath = envDataPath
@@ -79,6 +84,10 @@ func FillConfigFromEnvironment(config Config) Config {
 	if envLogDir != "" {
 		config.LogDir = envLogDir
 		config.Debug = true
+	}
+
+	if envManifestFilePath != "" {
+		config.ManifestFilePath = envManifestFilePath
 	}
 
 	return config

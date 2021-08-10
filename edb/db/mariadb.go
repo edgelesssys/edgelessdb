@@ -55,6 +55,9 @@ const (
 // ErrPreviousInitFailed is thrown when a previous initialization attempt failed, but another init or start is attempted.
 var ErrPreviousInitFailed = errors.New("a previous initialization attempt failed")
 
+// ErrNotInitializedYet is thrown when the database has not been initialized yet
+var ErrNotInitializedYet = errors.New("database has not been initialized yet")
+
 // Mariadbd is used to control mariadbd.
 type Mariadbd interface {
 	Main(cnfPath string) int
@@ -164,7 +167,7 @@ func (d *Mariadb) Start() error {
 	_, err := os.Stat(filepath.Join(d.externalPath, "#rocksdb"))
 	if os.IsNotExist(err) {
 		rt.Log.Println("DB has not been initialized, waiting for manifest.")
-		return nil
+		return ErrNotInitializedYet
 	}
 	if err != nil {
 		return err
