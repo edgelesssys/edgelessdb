@@ -26,6 +26,7 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/base64"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
@@ -39,6 +40,7 @@ import (
 	"github.com/edgelesssys/edgelessdb/edb/rt"
 	"github.com/edgelesssys/edgelessdb/edb/util"
 	"github.com/edgelesssys/ego/marble"
+	"github.com/fatih/color"
 	"github.com/spf13/afero"
 )
 
@@ -183,8 +185,11 @@ func (c *Core) Recover(ctx context.Context, key []byte) error {
 
 // StartDatabase starts the database.
 func (c *Core) StartDatabase() error {
+	var dbNotInitializedYet bool
 	// Start MariaDB
-	if err := c.db.Start(); err != nil {
+	if err := c.db.Start(); err == db.ErrNotInitializedYet {
+		dbNotInitializedYet = true
+	} else if err != nil {
 		return err
 	}
 
@@ -203,6 +208,31 @@ func (c *Core) StartDatabase() error {
 	c.report, err = c.rt.GetRemoteReport(hash[:])
 	if err != nil {
 		fmt.Printf("Failed to get quote: %v\n", err)
+	}
+
+	// If database is not initialized yet and a manifest file has been specified, initialize the database.
+	if dbNotInitializedYet && c.cfg.ManifestFilePath != "" {
+		rt.Log.Println("Found manifest path in environment, trying to initialize from file...")
+		// First, check if we can read the file
+		manifestContent, err := c.fs.ReadFile(c.cfg.ManifestFilePath)
+		if err != nil {
+			return err
+		}
+		// If we can, try to initialize.
+		encryptedRecoveryData, err := c.Initialize(manifestContent)
+		if err != nil {
+			return err
+		}
+
+		if !c.isMarble && len(encryptedRecoveryData) > 0 {
+			color.Yellow("----------------------------------------ATTENTION----------------------------------------")
+			color.Yellow("Store the data below in a safe place to relaunch EdgelessDB on another host machine.")
+			color.Yellow("For more information: https://docs.edgeless.systems/edgelessdb/#/getting-started/recovery")
+			color.Yellow("-----------------------------------------------------------------------------------------")
+			color.Yellow("--------------------------------------RECOVERY DATA--------------------------------------")
+			color.Yellow(base64.StdEncoding.EncodeToString(encryptedRecoveryData))
+			color.Yellow("-----------------------------------------------------------------------------------------")
+		}
 	}
 	return nil
 }
