@@ -266,8 +266,22 @@ func TestMarbleReaderWriter(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
+	// Setup manifest
+	caCert, caKey := createCertificate("Owner CA", "", "")
+	readerCert, readerKey := createCertificate("Reader", caCert, caKey)
+	writerCert, writerKey := createCertificate("Writer", caCert, caKey)
+
+	manifest := createManifest(caCert, []string{
+		"CREATE USER reader REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Reader'",
+		"CREATE USER writer REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Writer'",
+		"CREATE DATABASE test",
+		"CREATE TABLE test.data (i INT)",
+		"GRANT SELECT ON test.data TO reader",
+		"GRANT INSERT ON test.data TO writer",
+	}, true, "")
+
 	// Setup mock Marblerun Coordinator
-	grpcServer, tempDir, err := startMockMarblerunCoordinator()
+	grpcServer, tempDir, err := startMockMarblerunCoordinator(manifest)
 	require.NoError(err)
 	defer grpcServer.Stop()
 	defer os.RemoveAll(tempDir)
@@ -282,28 +296,13 @@ func TestMarbleReaderWriter(t *testing.T) {
 	process := startEDB(marbleUUIDDir)
 	assert.NotNil(process)
 	defer process.Kill()
-	assert.NotEmpty(getServerCertificate())
 
-	// Setup manifest
-	caCert, caKey := createCertificate("Owner CA", "", "")
-	readerCert, readerKey := createCertificate("Reader", caCert, caKey)
-	writerCert, writerKey := createCertificate("Writer", caCert, caKey)
+	// Wait until edb automatically restarts from "manifest from file deployment"
+	// In theory, we could try to race for the server certificate and use the "secure" HTTP client here, however that seems like a bad idea for a test
+	waitUntilRestart("")
 
-	manifest := createManifest(caCert, []string{
-		"CREATE USER reader REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Reader'",
-		"CREATE USER writer REQUIRE ISSUER '/CN=Owner CA' SUBJECT '/CN=Writer'",
-		"CREATE DATABASE test",
-		"CREATE TABLE test.data (i INT)",
-		"GRANT SELECT ON test.data TO reader",
-		"GRANT INSERT ON test.data TO writer",
-	}, false, "")
-
-	// Owner
-	{
-		serverCert := getServerCertificate()
-		_, err := postManifest(serverCert, manifest, true)
-		assert.NoError(err)
-	}
+	serverCert := getServerCertificate()
+	assert.NotEmpty(serverCert)
 
 	// Writer
 	{
@@ -763,7 +762,22 @@ func postManifest(serverCert string, manifest []byte, waitForRestart bool) ([]by
 	}
 
 	// wait until edb restarted
-	url.Path = "signature"
+	waitUntilRestart(serverCert)
+
+	return recoveryKey, nil
+}
+
+func waitUntilRestart(serverCert string) {
+	var client http.Client
+	if serverCert != "" {
+		client = createHttpClient(serverCert)
+	} else {
+		client = http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
+	}
+
+	url := url.URL{Scheme: "https", Host: addrAPI, Path: "signature"}
+
+	// wait until edb restarted
 	log.Print("waiting for restart ...")
 	for {
 		time.Sleep(10 * time.Millisecond)
@@ -779,7 +793,7 @@ func postManifest(serverCert string, manifest []byte, waitForRestart bool) ([]by
 			}
 			if len(body) > 0 {
 				log.Print("restarted successfully")
-				return recoveryKey, nil
+				return
 			}
 		}
 	}
@@ -835,7 +849,7 @@ func sqlOpen(user, userCert, userKey, serverCert string) *sql.DB {
 }
 
 // Marblerun mock functions down below
-func startMockMarblerunCoordinator() (*grpc.Server, string, error) {
+func startMockMarblerunCoordinator(jsonManifest []byte) (*grpc.Server, string, error) {
 	// Create certificate for the Coordinator
 	certBytes, priv := generateCertificate("Mocked Coordinator", []string{"localhost"}, "", "", false)
 	cert := tls.Certificate{Certificate: [][]byte{certBytes}, PrivateKey: priv}
@@ -859,7 +873,7 @@ func startMockMarblerunCoordinator() (*grpc.Server, string, error) {
 	privKeyPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyPKCS8}))
 	secertRootCert, secretRootKey := createMarbleSecretCertificate(rootCertPEM, privKeyPEM)
 
-	marbleServer := marbleServer{dataDir: tempDir, rootCert: rootCertPEM, secretRootCert: secertRootCert, secretRootKey: secretRootKey}
+	marbleServer := marbleServer{dataDir: tempDir, rootCert: rootCertPEM, secretRootCert: secertRootCert, secretRootKey: secretRootKey, manifest: string(jsonManifest)}
 	rpc.RegisterMarbleServer(server, marbleServer)
 
 	listener, err := net.Listen("tcp", "localhost:")
@@ -883,10 +897,11 @@ type marbleServer struct {
 	rootCert       string
 	secretRootCert string
 	secretRootKey  string
+	manifest       string
 }
 
 func (m marbleServer) Activate(context.Context, *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	return &rpc.ActivationResp{Parameters: &rpc.Parameters{
-		Env: map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir, core.ERocksDBMasterKeyVar: "4142434445464748494a4b4c4d4e4f50", marble.MarbleEnvironmentRootCA: m.rootCert, db.EnvRootCertificate: m.secretRootCert, db.EnvRootKey: m.secretRootKey},
-	}}, nil
+		Env:   map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir, core.ERocksDBMasterKeyVar: "4142434445464748494a4b4c4d4e4f50", marble.MarbleEnvironmentRootCA: m.rootCert, db.EnvRootCertificate: m.secretRootCert, db.EnvRootKey: m.secretRootKey, core.EnvManifestFile: "/tmp/manifest.json"},
+		Files: map[string]string{"/tmp/manifest.json": m.manifest}}}, nil
 }
