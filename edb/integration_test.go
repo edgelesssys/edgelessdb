@@ -524,6 +524,42 @@ func TestRecovery(t *testing.T) {
 	assert.Equal(2., val)
 }
 
+func TestDropDatabase(t *testing.T) {
+	assert := assert.New(t)
+
+	caCertPem, caKeyPem := createCertificate("ca", "", "")
+	usrCertPem, usrKeyPem := createCertificate("usr", caCertPem, caKeyPem)
+	recoveryKeyPem, _ := createRecoveryKey()
+
+	manifest := createManifest(caCertPem, []string{
+		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
+		"CREATE DATABASE test",
+		"CREATE TABLE test.data (i INT)",
+		"GRANT ALL ON test.* TO usr",
+	}, false, recoveryKeyPem)
+
+	setConfig(false, "")
+	defer cleanupConfig()
+
+	process := startEDB("")
+	assert.NotNil(process)
+	defer process.Kill()
+
+	serverCert := getServerCertificate()
+
+	_, err := postManifest(serverCert, manifest, true)
+	assert.NoError(err)
+
+	db := sqlOpen("usr", usrCertPem, usrKeyPem, serverCert)
+	_, err = db.Exec("DROP DATABASE test")
+	assert.NoError(err)
+	_, err = db.Exec("CREATE DATABASE test")
+	assert.NoError(err)
+	_, err = db.Exec("CREATE TABLE test.data (i INT)")
+	assert.NoError(err)
+	db.Close()
+}
+
 func setConfig(debug bool, logDir string) {
 	tempPath, err := ioutil.TempDir("", "")
 	if err != nil {
