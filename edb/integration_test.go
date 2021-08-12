@@ -557,6 +557,13 @@ func TestDropDatabase(t *testing.T) {
 	assert.NoError(err)
 	_, err = db.Exec("CREATE TABLE test.data (i INT)")
 	assert.NoError(err)
+	// Make sure EDB's restart is not masking an issue here
+	_, err = db.Exec("DROP DATABASE test")
+	assert.NoError(err)
+	_, err = db.Exec("CREATE DATABASE test")
+	assert.NoError(err)
+	_, err = db.Exec("CREATE TABLE test.data (i INT)")
+	assert.NoError(err)
 	db.Close()
 }
 
