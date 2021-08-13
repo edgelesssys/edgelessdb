@@ -529,14 +529,13 @@ func TestDropDatabase(t *testing.T) {
 
 	caCertPem, caKeyPem := createCertificate("ca", "", "")
 	usrCertPem, usrKeyPem := createCertificate("usr", caCertPem, caKeyPem)
-	recoveryKeyPem, _ := createRecoveryKey()
 
 	manifest := createManifest(caCertPem, []string{
 		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
 		"CREATE DATABASE test",
 		"CREATE TABLE test.data (i INT)",
 		"GRANT ALL ON test.* TO usr",
-	}, false, recoveryKeyPem)
+	}, false, "")
 
 	setConfig(false, "")
 	defer cleanupConfig()
