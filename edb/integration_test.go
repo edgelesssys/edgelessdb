@@ -556,7 +556,9 @@ func TestDropDatabase(t *testing.T) {
 	assert.NoError(err)
 	_, err = db.Exec("CREATE TABLE test.data (i INT)")
 	assert.NoError(err)
-	// Make sure EDB's restart is not masking an issue here
+	// When EDB restarts the memfs is cleared along with any artefacts in the filesystem
+	// If DROP DATABASE test is leaving any artifacts we won't notice that after the first iteration
+	// Hence try once more to make sure DROP deletes any artifacts
 	_, err = db.Exec("DROP DATABASE test")
 	assert.NoError(err)
 	_, err = db.Exec("CREATE DATABASE test")
