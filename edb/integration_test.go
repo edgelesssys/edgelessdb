@@ -524,6 +524,50 @@ func TestRecovery(t *testing.T) {
 	assert.Equal(2., val)
 }
 
+func TestDropDatabase(t *testing.T) {
+	assert := assert.New(t)
+
+	caCertPem, caKeyPem := createCertificate("ca", "", "")
+	usrCertPem, usrKeyPem := createCertificate("usr", caCertPem, caKeyPem)
+
+	manifest := createManifest(caCertPem, []string{
+		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
+		"CREATE DATABASE test",
+		"CREATE TABLE test.data (i INT)",
+		"GRANT ALL ON test.* TO usr",
+	}, false, "")
+
+	setConfig(false, "")
+	defer cleanupConfig()
+
+	process := startEDB("")
+	assert.NotNil(process)
+	defer process.Kill()
+
+	serverCert := getServerCertificate()
+
+	_, err := postManifest(serverCert, manifest, true)
+	assert.NoError(err)
+
+	db := sqlOpen("usr", usrCertPem, usrKeyPem, serverCert)
+	_, err = db.Exec("DROP DATABASE test")
+	assert.NoError(err)
+	_, err = db.Exec("CREATE DATABASE test")
+	assert.NoError(err)
+	_, err = db.Exec("CREATE TABLE test.data (i INT)")
+	assert.NoError(err)
+	// When EDB restarts the memfs is cleared along with any artefacts in the filesystem
+	// If DROP DATABASE test is leaving any artifacts we won't notice that after the first iteration
+	// Hence try once more to make sure DROP deletes any artifacts
+	_, err = db.Exec("DROP DATABASE test")
+	assert.NoError(err)
+	_, err = db.Exec("CREATE DATABASE test")
+	assert.NoError(err)
+	_, err = db.Exec("CREATE TABLE test.data (i INT)")
+	assert.NoError(err)
+	db.Close()
+}
+
 func setConfig(debug bool, logDir string) {
 	tempPath, err := ioutil.TempDir("", "")
 	if err != nil {
