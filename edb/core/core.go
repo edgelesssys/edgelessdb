@@ -228,7 +228,7 @@ func (c *Core) StartDatabase() error {
 		if !c.isMarble && len(encryptedRecoveryData) > 0 {
 			color.Yellow("----------------------------------------ATTENTION----------------------------------------")
 			color.Yellow("Store the data below in a safe place to relaunch EdgelessDB on another host machine.")
-			color.Yellow("For more information: https://docs.edgeless.systems/edgelessdb/#/getting-started/recovery")
+			color.Yellow("For more information: https://edglss.cc/doc-edb-recovery")
 			color.Yellow("-----------------------------------------------------------------------------------------")
 			color.Yellow("--------------------------------------RECOVERY DATA--------------------------------------")
 			color.Yellow(base64.StdEncoding.EncodeToString(encryptedRecoveryData))
@@ -237,7 +237,7 @@ func (c *Core) StartDatabase() error {
 	} else if dbNotInitializedYet && c.isMarble {
 		color.Red("edb was launched as a Marble, but was not provided a manifest to initialize with.")
 		color.Red("Please make sure your MarbleRun manifest does specify the required environment variable *and* manifest file.")
-		color.Red("For more information: https://docs.edgeless.systems/edgelessdb/#/getting-started/marblerun")
+		color.Red("For more information: https://edglss.cc/doc-edb-marblerun")
 		return errors.New("marblerun did not supply any manifest")
 	}
 
