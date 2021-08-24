@@ -6,7 +6,7 @@ EdgelessDB
 
 <img src="logo.svg" alt="logo" width="40%">
 
-[EdgelessDB](https://edgeless.systems/products/edgelessdb) is a MySQL-compatible database for [confidential computing](https://confidentialcomputing.io). EdgelessDB runs entirely inside runtime-encrypted Intel SGX enclaves. In contrast to other databases, EdgelessDB ensures that all data is always encrypted—in memory as well as on disk. EdgelessDB has no storage constraints and delivers close to native performance.
+[EdgelessDB](https://edgeless.systems/products/edgelessdb) is an open-source MySQL-compatible database for [confidential computing](https://confidentialcomputing.io). EdgelessDB runs entirely inside runtime-encrypted Intel SGX enclaves. In contrast to other databases, EdgelessDB ensures that all data is always encrypted—in memory as well as on disk. EdgelessDB has no storage constraints and delivers close to native performance.
 
 Central to EdgelessDB is the concept of a *manifest*. The manifest is defined in JSON and is similar to a smart contract. It defines the initial state of the database, including access control, in an attestable way.
 
