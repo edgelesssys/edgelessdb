@@ -9,7 +9,7 @@ RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   doxygen \
   git \
   liblz4-dev=1.9.2-2ubuntu0.20.04.1 \
-  libssl-dev=1.1.1f-1ubuntu2.4 \
+  libssl-dev=1.1.1f-1ubuntu2.8 \
   ninja-build=1.10.0-1build1 \
   zlib1g-dev=1:1.2.11.dfsg-2ubuntu1.2
 
