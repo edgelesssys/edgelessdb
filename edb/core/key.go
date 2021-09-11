@@ -177,10 +177,15 @@ func (c *Core) setMasterKey(key []byte) error {
 }
 
 func (c *Core) mustInitMasterKey() {
+	// Check if RocksDB has already been initialized
+	rocksDBAlreadyInitialized, err := c.fs.Exists(filepath.Join(c.cfg.DataPath, "#rocksdb"))
+	if err != nil {
+		panic(err)
+	}
 	// Try to load from env or file.
 	key, err := c.loadMasterKey()
 	// Does not exist? Generate a new one.
-	if os.IsNotExist(err) {
+	if os.IsNotExist(err) && !rocksDBAlreadyInitialized {
 		key, err = c.newMasterKey()
 		if err != nil {
 			panic(err)
