@@ -167,7 +167,7 @@ func TestSetMasterKey(t *testing.T) {
 	assert.Error(core.setMasterKey(mockKey))
 }
 
-// Note: TestMustInitMasterKey cannot test entering the recovery mode, as the unit tests don't run in an enclave.
+// Note: TestMustInitMasterKey can only test entering the recovery mode when the key is missing, not when decryption fails since we cannot use enclave decryption/encryption functions.
 func TestMustInitMasterKey(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
@@ -211,6 +211,16 @@ func TestMustInitMasterKey(t *testing.T) {
 	keyFromEnv, err = hex.DecodeString(os.Getenv(ERocksDBMasterKeyVar))
 	require.NoError(err)
 	assert.Equal(keyFromDisk, keyFromEnv)
+
+	// Forcefully reset state for next test
+	os.Clearenv()
+	core.state = stateUninitialized
+
+	// Delete the key from disk, see if we enter recovery mode when RocksDB has been initialized but the key is missing
+	require.NoError(core.fs.Mkdir(filepath.Join(cfg.DataPath, "#rocksdb"), 0700))
+	require.NoError(core.fs.Remove(filepath.Join(tempPath, PersistenceDir, sealedKeyFname)))
+	core.mustInitMasterKey()
+	assert.Equal(stateRecovery, core.state)
 
 	// Delete from env, forcefully reset state for the unit test, run as Marble
 	// This should fail as we expect that Marblerun always provides the key in the environment, not from a file
