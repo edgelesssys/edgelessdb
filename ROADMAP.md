@@ -1,9 +1,9 @@
 # EdgelessDB roadmap
 
-<!--## Recently completed-->
+## Recently completed
+* MarbleRun integration
 
 ## Near-term and mid-term
-* MarbleRun integration
 * Azure Marketplace offering
 * Improve performance
 

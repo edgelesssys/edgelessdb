@@ -917,7 +917,7 @@ func startMockMarblerunCoordinator(jsonManifest []byte) (*grpc.Server, string, e
 	privKeyPEM := string(pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: privKeyPKCS8}))
 	secertRootCert, secretRootKey := createMarbleSecretCertificate(rootCertPEM, privKeyPEM)
 
-	marbleServer := marbleServer{dataDir: tempDir, rootCert: rootCertPEM, secretRootCert: secertRootCert, secretRootKey: secretRootKey, manifest: string(jsonManifest)}
+	marbleServer := marbleServer{dataDir: tempDir, rootCert: rootCertPEM, secretRootCert: secertRootCert, secretRootKey: secretRootKey, manifest: jsonManifest}
 	rpc.RegisterMarbleServer(server, marbleServer)
 
 	listener, err := net.Listen("tcp", "localhost:")
@@ -937,15 +937,25 @@ func startMockMarblerunCoordinator(jsonManifest []byte) (*grpc.Server, string, e
 }
 
 type marbleServer struct {
+	rpc.UnimplementedMarbleServer
 	dataDir        string
 	rootCert       string
 	secretRootCert string
 	secretRootKey  string
-	manifest       string
+	manifest       []byte
 }
 
 func (m marbleServer) Activate(context.Context, *rpc.ActivationReq) (*rpc.ActivationResp, error) {
 	return &rpc.ActivationResp{Parameters: &rpc.Parameters{
-		Env:   map[string]string{core.EnvAPIAddress: addrAPI, core.EnvDatabaseAddress: addrDB, core.EnvDataPath: m.dataDir, core.ERocksDBMasterKeyVar: "4142434445464748494a4b4c4d4e4f50", marble.MarbleEnvironmentRootCA: m.rootCert, db.EnvRootCertificate: m.secretRootCert, db.EnvRootKey: m.secretRootKey, core.EnvManifestFile: "/tmp/manifest.json"},
-		Files: map[string]string{"/tmp/manifest.json": m.manifest}}}, nil
+		Env: map[string][]byte{
+			core.EnvAPIAddress:             []byte(addrAPI),
+			core.EnvDatabaseAddress:        []byte(addrDB),
+			core.EnvDataPath:               []byte(m.dataDir),
+			core.ERocksDBMasterKeyVar:      []byte("4142434445464748494a4b4c4d4e4f50"),
+			marble.MarbleEnvironmentRootCA: []byte(m.rootCert),
+			db.EnvRootCertificate:          []byte(m.secretRootCert),
+			db.EnvRootKey:                  []byte(m.secretRootKey),
+			core.EnvManifestFile:           []byte("/tmp/manifest.json")},
+		Files: map[string][]byte{"/tmp/manifest.json": m.manifest}},
+	}, nil
 }
