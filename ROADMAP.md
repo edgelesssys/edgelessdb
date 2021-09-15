@@ -9,4 +9,5 @@
 
 ## Long-term
 * Host migration without requiring to perform recovery
+* Rollback prevention
 * Database replication
