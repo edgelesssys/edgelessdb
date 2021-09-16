@@ -1,0 +1,70 @@
+# Default values for EdgelessDB
+
+global:
+  image:
+    pullPolicy: IfNotPresent
+    version: v0.1.1
+    repository: ghcr.io/edgelesssys
+
+  createdBy: Helm
+
+  # Additional annotations to add to all pods
+  podAnnotations: {}
+
+  # Additional labels to add to all pods
+  podLabels: {}
+
+  # For Private docker registries, authentication is needed.
+  #  Registry secrets are applied to the respective service accounts
+  # pullSecret:
+  # pullSecret: my-private-docker-registry-login-secret
+
+edb:
+  replicas: 1
+
+  # The network address of the MySQL interface
+  sqlApiHost: "0.0.0.0"
+  sqlApiPort: 3306
+  # The network address of the HTTP REST API
+  restApiHost: "0.0.0.0"
+  restApiPort: 8080
+  # Set to enable debug logging to the terminal. The manifest must allow this because logs may leak data.
+  debug: false
+  # Like EDG_EDB_DEBUG, but log to files. Set this, e.g., to /log and mount a storage interface to that path
+  logDir: ""
+  # OE_SIMULATION needs be set to "1" when running on systems without SGX1+FLC capabilities
+  simulation: false
+  # Heap size of the database enclave in GB. Currently Edgeless Systems provides images for 1GB and 4GB heap sizes.
+  heapSize: 1
+  # Label needed when EDB is deployed as a Marble with MarbleRun
+  marbleType: EdgelessDB
+  # Set to start EDB in MarbleRun mode
+  launchMarble: false
+
+  # resource limits/requests
+  resources:
+    limits:
+      sgx.intel.com/epc: "10Mi"
+      sgx.intel.com/provision: 1
+      sgx.intel.com/enclave: 1
+
+storage:
+  # EdgelessDB persistent storage spec
+  spec:
+    accessModes:
+      - ReadWriteOnce
+    resources:
+      requests:
+        storage: 1Gi
+
+# Tolerations constraints for control-plane components
+# https://kubernetes.io/docs/concepts/scheduling-eviction/taint-and-toleration/
+tolerations:
+  - key: sgx.intel.com/epc
+    operator: Exists
+    effect: NoSchedule
+
+# Node selection constraints for control-plane components
+# https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector.
+nodeSelector:
+  beta.kubernetes.io/os: linux

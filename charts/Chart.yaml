@@ -1,0 +1,21 @@
+apiVersion: v2
+name: EdgelessDB
+description: EdgelessDB is a MySQL-compatible database for confidential computing. It runs entirely inside a secure enclave and comes with advanced features for collaboration, recovery, and access control. 
+keywords:
+- database
+- confidential-computing
+type: application
+appVersion: v0.1.1
+version: v0.1.1
+maintainers:
+  - name: Edgeless Systems
+    email: contact@edgeless.systems
+    url: https://edgeless.systems/
+sources:
+- https://github.com/edgelesssys/edgelessdb
+home: https://edgeless.systems
+icon: https://raw.githubusercontent.com/edgelesssys/helm/main/edgelessdb_icon.svg
+annotations:
+  "artifacthub.io/links": |
+    - name: Chart Source
+      url: https://github.com/edgelesssys/edgelessdb/tree/main/charts
