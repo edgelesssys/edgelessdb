@@ -2,8 +2,7 @@
 
 ## Documentation
 
-See the [Getting Started Guide](https://docs.edgeless.systems/edgelessdb/#/getting-started/quickstart-sgx) to set up a EdgelessDB in a few simple steps.
-For more comprehensive documentation, start with the [docs](https://docs.edgeless.systems/edgelessdb/#/).
+See the [docs](https://docs.edgeless.systems/edgelessdb/#/) for a comprehensive documentation of EdgelessDB.
 
 ## Add Repository (stable)
 
@@ -31,7 +30,7 @@ helm repo update
 * Otherwise
 
     ```bash
-    helm install edgelessdb edgeless/edgelessdb --create-namespace --namespace edgelessdb --set edgelessdb.resources=null --set edgelessdb.simulation=1 --set tolerations=null
+    helm install edgelessdb edgeless/edgelessdb --create-namespace --namespace edgelessdb --set edgelessdb.resources=null --set edgelessdb.simulation=true --set tolerations=null
     ```
 
 ## Configuration
@@ -41,7 +40,7 @@ their default values.
 
 | Parameter                     | Type    | Description    | Default                              |
 |:------------------------------|:---------------|:---------------|:-------------------------------------|
-| `edb.debug`                   |string | Set to enable debug logging to the terminal. The manifest must allow this because logs may leak data | `""` |
+| `edb.debug`                   |bool   | Set to `true` enable debug logging to the terminal. The manifest must allow this because logs may leak data | `false` |
 | `edb.heapSize`                |int    | Heap size of the database enclave in GB. Currently Edgeless Systems provides images for 1GB and 4GB heap sizes | `1` |
 | `edb.launchMarble`            |bool   | Set to start EdgelessDB in MarbleRun mode | `false` |
 | `edb.logDir`                  |string | Like EDG_EDB_DEBUG, but log to files. Set this, e.g., to /log and mount a storage interface to that path | `""` |
@@ -50,7 +49,7 @@ their default values.
 | `edb.resources`               |object | Resource requirements for EdgelessDB | `{limits:[{"sgx.intel.com/epc": "10Mi"},{"sgx.intel.com/provision":1},{"sgx.intel.com/enclave":1}]}` |
 | `edb.restApiHost`             |string | The network address of the HTTP REST API | `"0.0.0.0"` |
 | `edb.restApiPort`             |int    | Port of the HTTP REST API | `8080` |
-| `edb.simulation`              |string | OE_SIMULATION needs be set to "1" when running on systems without SGX1+FLC capabilities | `0` |
+| `edb.simulation`              |bool   | Needs be set to `true` when running on systems without SGX1+FLC capabilities | `false` |
 | `edb.sqlApiHost`              |string | The network address of the MySQL interface | `"0.0.0.0"` |
 | `edb.sqlApiPort`              |int    | Port of the MySQL interface | `3306` |
 | `global.image`                |object | EdgelessDB image configuration | `{"pullPolicy":"IfNotPresent","version":" v0.1.1","repository":"ghcr.io/edgelesssys"}` |

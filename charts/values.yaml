@@ -29,11 +29,11 @@ edb:
   restApiHost: "0.0.0.0"
   restApiPort: 8080
   # Set to enable debug logging to the terminal. The manifest must allow this because logs may leak data.
-  debug: ""
+  debug: false
   # Like EDG_EDB_DEBUG, but log to files. Set this, e.g., to /log and mount a storage interface to that path
   logDir: ""
   # OE_SIMULATION needs be set to "1" when running on systems without SGX1+FLC capabilities
-  simulation: "0"
+  simulation: false
   # Heap size of the database enclave in GB. Currently Edgeless Systems provides images for 1GB and 4GB heap sizes.
   heapSize: 1
   # Label needed when EDB is deployed as a Marble with MarbleRun
