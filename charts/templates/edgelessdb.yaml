@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: edgelessdb
+  namespace: {{ .Release.namespace }}
+  labels:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+    app.kubernetes.io/name: EdgelessDB
+    app.kubernetes.io/part-of: EdgelessDB
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+spec:
+  serviceName: "edgelessdb"
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/component: database
+      app.kubernetes.io/name: EdgelessDB
+      app.kubernetes.io/version: {{ .Values.global.image.version }}
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/component: database
+        app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+        app.kubernetes.io/name: EdgelessDB
+        app.kubernetes.io/part-of: EdgelessDB
+        app.kubernetes.io/version: {{ .Values.global.image.version }}
+        marblerun/marbletype: {{ .Values.edb.marbleType }}
+    spec:
+      serviceAccountName: edgelessdb
+      containers:
+        - env:
+          - name: EDG_EDB_DATABASE_ADDR
+            value: "{{ .Values.edb.sqlApiHost }}:{{ .Values.edb.sqlApiPort }}"
+          - name: EDG_EDB_API_ADDR
+            value: "{{ .Values.edb.restApiHost }}:{{ .Values.edb.restApiPort }}"
+          - name: EDG_EDB_DEBUG
+            value: "{{ .Values.edb.debug }}"
+          - name: EDG_EDB_LOG_DIR
+            value: "{{ .Values.edb.logDir }}"
+          - name: OE_SIMULATION
+            value: "{{ .Values.edb.simulation }}"
+          {{- if .Values.edb.launchMarble }}
+          args: [ "-marble" ]
+          {{- end }}
+          name: edgelessdb
+          image: "{{ .Values.global.image.repository }}/edgelessdb-sgx-{{ .Values.edb.heapSize }}gb:{{ .Values.global.image.version }}"
+          imagePullPolicy: {{ .Values.global.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.edb.sqlApiPort }}
+              name: sql
+            - containerPort: {{ .Values.edb.restApiPort }}
+              name: http
+          resources:
+          {{- toYaml .Values.edb.resources | nindent 12 }}
+          volumeMounts:
+          - name: edgelessdb-storage
+            mountPath: /data
+      volumes:
+        - name: edgelessdb-storage
+          persistentVolumeClaim:
+            claimName: edgelessdb-storage
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: edgelessdb-storage
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: edgelessdb-storage
+    app.kubernetes.io/component: persistent-storage
+    app.kubernetes.io/part-of: EdgelessDB
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+spec:
+  {{- toYaml .Values.storage.spec | nindent 2 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edgelessdb-sql-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: edgelessdb-sql-api
+    app.kubernetes.io/component: api-port
+    app.kubernetes.io/part-of: EdgelessDB
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: EdgelessDB
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+  ports:
+  - name: sql
+    port: {{ .Values.edb.sqlApiPort }}
+    targetPort: {{ .Values.edb.sqlApiPort }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: edgelessdb-rest-api
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/name: edgelessdb-rest-api
+    app.kubernetes.io/component: api-port
+    app.kubernetes.io/part-of: EdgelessDB
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+    app.kubernetes.io/created-by: {{ .Values.global.createdBy }}
+spec:
+  type: LoadBalancer
+  selector:
+    app.kubernetes.io/component: database
+    app.kubernetes.io/name: EdgelessDB
+    app.kubernetes.io/version: {{ .Values.global.image.version }}
+  ports:
+  - name: http
+    port: {{ .Values.edb.restApiPort }}
+    targetPort: {{ .Values.edb.restApiPort }}
