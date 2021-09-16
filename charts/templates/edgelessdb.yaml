@@ -11,7 +11,7 @@ metadata:
     app.kubernetes.io/version: {{ .Values.global.image.version }}
 spec:
   serviceName: "edgelessdb"
-  replicas: 1
+  replicas: {{ .Values.edb.replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/component: database
