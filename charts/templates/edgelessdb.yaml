@@ -35,11 +35,11 @@ spec:
           - name: EDG_EDB_API_ADDR
             value: "{{ .Values.edb.restApiHost }}:{{ .Values.edb.restApiPort }}"
           - name: EDG_EDB_DEBUG
-            value: "{{ .Values.edb.debug }}"
+            value: {{ if .Values.edb.debug }}"1"{{ else }}"0"{{ end }}
           - name: EDG_EDB_LOG_DIR
             value: "{{ .Values.edb.logDir }}"
           - name: OE_SIMULATION
-            value: "{{ .Values.edb.simulation }}"
+            value: {{ if .Values.edb.simulation }}"1"{{ else }}"0"{{ end }}
           {{- if .Values.edb.launchMarble }}
           args: [ "-marble" ]
           {{- end }}
