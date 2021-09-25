@@ -76,6 +76,6 @@ During development it may be useful to run emariadbd. This is mariadbd inside th
 ```sh
 cd build
 make emariadbd
-mariadb/scripts/mysql_install_db --srcdir=../3rdparty/edgeless-mariadb --auth-root-authentication-method=normal
-erthost emariadbd.signed --datadir=./data --default-storage-engine=rocksdb
+mariadb/scripts/mysql_install_db --srcdir=../3rdparty/edgeless-mariadb --auth-root-authentication-method=normal --no-defaults
+erthost emariadbd.signed --no-defaults --datadir=./data --default-storage-engine=rocksdb
 ```
