@@ -257,7 +257,7 @@ configure_file(src/edb edb COPYONLY)
 
 if(BUILD_TESTS)
   enable_testing()
-  add_test(NAME unit-tests COMMAND go test ./... WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(NAME unit-tests COMMAND go test -race -count=3 ./... WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_test(NAME integration-noenclave COMMAND go test -v -tags integration ./edb -e ${CMAKE_BINARY_DIR}/edb-noenclave WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_test(NAME integration COMMAND go test -v -tags integration ./edb -e ${CMAKE_BINARY_DIR}/edb WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
