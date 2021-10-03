@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(edb)
+project(edb VERSION 0.1.1)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
@@ -224,7 +224,7 @@ add_library(edb-lib src/emain.cc)
 target_link_libraries(edb-lib PRIVATE openenclave::oe_includes)
 
 add_custom_target(edb-golib
-  ertgo build -buildmode=c-archive -tags enclave -o ${CMAKE_BINARY_DIR}
+  ${CMAKE_SOURCE_DIR}/src/build_golib.sh ${CMAKE_BINARY_DIR} ${PROJECT_VERSION}
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/edb)
 
 add_executable(edb-enclave src/mysqld_main.cc src/stubs.c x86_64cpuid_.o)

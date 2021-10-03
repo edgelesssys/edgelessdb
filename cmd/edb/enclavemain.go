@@ -25,13 +25,20 @@ import (
 	"syscall"
 
 	"github.com/edgelesssys/edgelessdb/edb/core"
+	"github.com/edgelesssys/edgelessdb/edb/rt"
 	"github.com/edgelesssys/ego/enclave"
 	"github.com/edgelesssys/marblerun/marble/premain"
 )
 
+// Don't touch! Automatically injected at build-time.
+var version = "0.0.0"
+var gitCommit = "0000000000000000000000000000000000000000"
+
 const internalPath = "/tmp/edb" // supposed to be mounted in emain.cpp
 
 func main() {
+	rt.Log.Printf("EdgelessDB v%v (%v)\n", version, gitCommit)
+
 	runAsMarble := flag.Bool("marble", false, "Run edb with Marblerun")
 	flag.Parse()
 
