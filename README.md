@@ -45,6 +45,13 @@ Or [check out the demo](demo) to see how EdgelessDB's confidential-computing fea
 
 See [the docs](https://docs.edgeless.systems/edgelessdb) for details on EdgelessDB concepts, configuration, and usage.
 
+## Community & help
+
+* For user help, questions or queries about EdgelessDB please use our public [Discord channel](https://discord.com/invite/rH8QTH56JN) or file an [issue](https://github.com/edgelesssys/edgelessdb/issues).
+* If you see an error message or run into an issue, please make sure to create a [bug report](https://github.com/edgelesssys/edgelessdb/issues).
+* Get the latest news and announcements on [Twitter](https://twitter.com/EdgelessSystems), [LinkedIn](https://www.linkedin.com/company/edgeless-systems/) or sign up for our monthly [newsletter](http://eepurl.com/hmjo3H).
+* Visit our [blog](https://blog.edgeless.systems/) for technical deep-dives and tutorials.
+
 ## Contribute
 
 Read [CONTRIBUTING.md](CONTRIBUTING.md) for information on issue reporting, code guidelines, and our PR process.
