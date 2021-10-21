@@ -41,7 +41,7 @@ When you initialize EdgelessDB with this manifest, EdgelessDB will use `ca` to v
 Get the attested EdgelessDB root certificate and initialize EdgelessDB with the manifest:
 ```
 cd owner
-era -c ../edb-enclave.json -h localhost:8080 -output-root edb.pem
+era -c ../edgelessdb-sgx.json -h localhost:8080 -output-root edb.pem
 curl --cacert edb.pem --data-binary @../manifest.json https://localhost:8080/manifest
 ```
 
@@ -50,7 +50,7 @@ Get the attested EdgelessDB root certificate and verify the manifest signature:
 ```
 $ cd ../writer
 
-$ era -c ../edb-enclave.json -h localhost:8080 -output-root edb.pem
+$ era -c ../edgelessdb-sgx.json -h localhost:8080 -output-root edb.pem
 Root certificate written to edb.pem
 
 $ curl --cacert edb.pem https://localhost:8080/signature
@@ -82,7 +82,7 @@ First, get the attested EdgelessDB root certificate and verify the manifest sign
 ```
 $ cd ../reader
 
-$ era -c ../edb-enclave.json -h localhost:8080 -output-root edb.pem
+$ era -c ../edgelessdb-sgx.json -h localhost:8080 -output-root edb.pem
 
 [... manifest verification ...]
 

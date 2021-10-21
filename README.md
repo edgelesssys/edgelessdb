@@ -4,7 +4,7 @@ EdgelessDB
 [![Discord Chat][discord-badge]][discord]
 ==
 
-<img src="logo.svg" alt="logo" width="40%">
+<img src="src/logo.svg" alt="logo" width="40%">
 
 [EdgelessDB](https://edgeless.systems/products/edgelessdb) is an open-source MySQL-compatible database for [confidential computing](https://confidentialcomputing.io). EdgelessDB runs entirely inside runtime-encrypted Intel SGX enclaves. In contrast to other databases, EdgelessDB ensures that all data is always encrypted—in memory as well as on disk. EdgelessDB has no storage constraints and delivers close to native performance.
 

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(edb VERSION 0.1.1)
+project(edb VERSION 0.2.0)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
@@ -245,7 +245,7 @@ add_custom_command(
   OUTPUT edb-enclave.signed
   DEPENDS edb-enclave genkey
   COMMAND openenclave::oesign sign -e $<TARGET_FILE:edb-enclave> -c ${CMAKE_BINARY_DIR}/enclave.conf -k private.pem
-  COMMAND openenclave::oesign eradump -e edb-enclave.signed > edb-enclave.json)
+  COMMAND openenclave::oesign eradump -e edb-enclave.signed > edgelessdb-sgx.json)
 
 add_custom_target(sign-edb ALL DEPENDS edb-enclave.signed)
 
