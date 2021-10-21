@@ -1,13 +1,13 @@
 # EdgelessDB roadmap
 
-## Recently completed
-* MarbleRun integration
+<!-- ## Recently completed -->
 
-## Near-term and mid-term
-* Azure Marketplace offering
+<!-- ## Near-term and mid-term -->
+
+<!-- ## Long-term -->
+
+* Support InnoDB
 * Improve performance
-
-## Long-term
 * Host migration without requiring to perform recovery
 * Rollback prevention
 * Database replication

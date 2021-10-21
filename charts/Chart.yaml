@@ -1,12 +1,12 @@
 apiVersion: v2
 name: edgelessdb
-description: EdgelessDB is a MySQL-compatible database for confidential computing. It runs entirely inside a secure enclave and comes with advanced features for collaboration, recovery, and access control. 
+description: EdgelessDB is a MySQL-compatible database for confidential computing. It runs entirely inside a secure enclave and comes with advanced features for collaboration, recovery, and access control.
 keywords:
 - database
 - confidential-computing
 type: application
-appVersion: v0.1.1
-version: v0.1.1
+appVersion: v0.2.0
+version: v0.2.0
 maintainers:
   - name: Edgeless Systems
     email: contact@edgeless.systems
