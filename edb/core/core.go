@@ -245,11 +245,6 @@ func (c *Core) StartDatabase() error {
 }
 
 func (c *Core) getConfigForClient(chi *tls.ClientHelloInfo) (*tls.Config, error) {
-	if chi.ServerName == "root" {
-		// edbra uses this name to get the root certificate
-		return nil, nil
-	}
-
 	// TLS requires that the hostname matches the server certificate's common name or SAN. However,
 	// we don't want to bind the database to a specific hostname or IP and it's not needed for
 	// security because we have remote attestation. Instead of requiring the client to be
@@ -264,9 +259,9 @@ func (c *Core) getConfigForClient(chi *tls.ClientHelloInfo) (*tls.Config, error)
 		hostname = c.cfg.CertificateDNSName
 	}
 
-	var ips []net.IP
+	ips := []net.IP{{127, 0, 0, 1}}
 	if addr, ok := chi.Conn.LocalAddr().(*net.TCPAddr); ok {
-		ips = []net.IP{addr.IP}
+		ips = append(ips, addr.IP)
 	}
 
 	cert, key, err := createCertificate(hostname, ips, signerCert, signerKey)
