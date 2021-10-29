@@ -34,7 +34,9 @@ Use these images to try the latest changes from the main branch:
 * `ghcr.io/edgelesssys/edgelessdb-debug-4gb:nightly`
 
 ## Build from source
-*Prerequisite*: [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced.
+*Prerequisites*:
+* [Edgeless RT](https://github.com/edgelesssys/edgelessrt) is installed and sourced
+* Go 1.16 or newer
 
 On Ubuntu 20.04 build with:
 ```sh
