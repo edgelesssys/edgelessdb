@@ -13,7 +13,7 @@ RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   ninja-build=1.10.0-1build1 \
   zlib1g-dev=1:1.2.11.dfsg-2ubuntu1.2
 
-ARG erttag=v0.2.7 edbtag=v0.2.0
+ARG erttag=v0.2.8 edbtag=v0.2.0
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && git clone -b $edbtag --depth=1 https://github.com/edgelesssys/edgelessdb \
   && mkdir ertbuild edbbuild
@@ -40,13 +40,12 @@ RUN --mount=type=secret,id=signingkey,dst=/edbbuild/private.pem,required=true \
 # deploy
 FROM ubuntu:focal-20211006
 ARG PSW_VERSION=2.15.100.3-focal1 DCAP_VERSION=1.12.100.3-focal1
-RUN apt update && apt install -y gnupg wget \
+RUN apt update && apt install -y gnupg libcurl4 wget \
   && wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add \
   && echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' >> /etc/apt/sources.list \
   && wget -qO- https://packages.microsoft.com/keys/microsoft.asc | apt-key add \
   && echo 'deb [arch=amd64] https://packages.microsoft.com/ubuntu/20.04/prod focal main' >> /etc/apt/sources.list \
   && apt update && apt install -y --no-install-recommends \
-  az-dcap-client \
   libsgx-ae-pce=$PSW_VERSION \
   libsgx-ae-qe3=$DCAP_VERSION \
   libsgx-ae-qve=$DCAP_VERSION \
@@ -57,9 +56,10 @@ RUN apt update && apt install -y gnupg wget \
   libsgx-launch=$PSW_VERSION \
   libsgx-pce-logic=$DCAP_VERSION \
   libsgx-qe3-logic=$DCAP_VERSION \
-  libsgx-urts=$PSW_VERSION
-COPY --from=build /edbbuild/edb /edbbuild/edb-enclave.signed /
+  libsgx-urts=$PSW_VERSION \
+  && apt install -d az-dcap-client libsgx-dcap-default-qpl=$DCAP_VERSION
+COPY --from=build /edbbuild/edb /edbbuild/edb-enclave.signed /edgelessdb/src/entry.sh /
 COPY --from=build /opt/edgelessrt/bin/erthost /opt/edgelessrt/bin/
 ENV PATH=${PATH}:/opt/edgelessrt/bin AZDCAP_DEBUG_LOG_LEVEL=error
-ENTRYPOINT ["./edb"]
+ENTRYPOINT ["/entry.sh"]
 EXPOSE 3306 8080
