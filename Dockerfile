@@ -13,7 +13,7 @@ RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   ninja-build=1.10.0-1build1 \
   zlib1g-dev=1:1.2.11.dfsg-2ubuntu1.2
 
-ARG erttag=v0.2.8 edbtag=v0.2.0
+ARG erttag=v0.2.8 edbtag=v0.2.1
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && git clone -b $edbtag --depth=1 https://github.com/edgelesssys/edgelessdb \
   && mkdir ertbuild edbbuild

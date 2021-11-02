@@ -5,8 +5,8 @@ keywords:
 - database
 - confidential-computing
 type: application
-appVersion: v0.2.0
-version: v0.2.0
+appVersion: v0.2.1
+version: v0.2.1
 maintainers:
   - name: Edgeless Systems
     email: contact@edgeless.systems
