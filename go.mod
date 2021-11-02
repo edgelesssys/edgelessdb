@@ -1,6 +1,6 @@
 module github.com/edgelesssys/edgelessdb
 
-go 1.14
+go 1.16
 
 require (
 	github.com/edgelesssys/ego v0.3.3
@@ -10,6 +10,6 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/spf13/afero v1.6.0
 	github.com/stretchr/testify v1.7.0
-	github.com/tidwall/gjson v1.9.3 // indirect
+	github.com/tidwall/gjson v1.10.2 // indirect
 	google.golang.org/grpc v1.41.0
 )
