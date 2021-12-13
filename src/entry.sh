@@ -7,7 +7,7 @@ fi
 
 if [ -n "${PCCS_URL}" ]; then
 	apt-get install -qq libsgx-dcap-default-qpl
-	ln -s /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so
+	ln -fs /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so.1 /usr/lib/x86_64-linux-gnu/libdcap_quoteprov.so
 	echo "PCCS_URL: ${PCCS_URL}"
 	echo "PCCS_URL=${PCCS_URL}\nUSE_SECURE_CERT=FALSE" > /etc/sgx_default_qcnl.conf
 else
