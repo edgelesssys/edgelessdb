@@ -81,3 +81,5 @@ make emariadbd
 mariadb/scripts/mysql_install_db --srcdir=../3rdparty/edgeless-mariadb --auth-root-authentication-method=normal --no-defaults
 erthost emariadbd.signed --no-defaults --datadir=./data --default-storage-engine=rocksdb
 ```
+
+You may get `not implemented` errors. This is because Edgeless RT doesn't implement all syscalls and POSIX functions. emariadbd doesn't strictly rely on the missing ones, so you can ignore the errors.
