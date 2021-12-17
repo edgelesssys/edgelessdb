@@ -52,6 +52,12 @@ You may add the following flags to the `cmake` command:
 * `-DHEAPSIZE=x` where x is the desired enclave heap size in MB. By default, heap size is 1024 MB.
 * `-DPRODUCTION=ON` to build a production enclave.
 
+### Run
+After building, you can run EdgelessDB from the build directory:
+```sh
+./edb
+```
+
 ## Test
 EdgelessDB tests verify basic SQL functionality and all of the additional CC features. In addition, we use MariaDB tests to ensure that we retain compatibility.
 
