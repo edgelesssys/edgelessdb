@@ -227,13 +227,13 @@ add_custom_target(edb-golib
   ${CMAKE_SOURCE_DIR}/src/build_golib.sh ${CMAKE_BINARY_DIR} ${PROJECT_VERSION}
   WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}/cmd/edb)
 
-add_executable(edb-enclave src/mysqld_main.cc src/stubs.c x86_64cpuid_.o)
+add_executable(edb-enclave src/mysqld_main.cc src/stubs.c x86_64cpuid_.o emain_t.c)
 add_dependencies(edb-enclave edb-golib mariadb)
 
 target_link_libraries(edb-enclave
   openenclave::oeenclave
-  openenclave::ertcalls
   edb-lib
+  openenclave::ertlibc
   openenclave::oehostepoll
   openenclave::oehostfs
   openenclave::oehostresolver
@@ -261,3 +261,17 @@ if(BUILD_TESTS)
   add_test(NAME integration-noenclave COMMAND go test -v -tags integration ./edb -e ${CMAKE_BINARY_DIR}/edb-noenclave WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_test(NAME integration COMMAND go test -v -tags integration ./edb -e ${CMAKE_BINARY_DIR}/edb WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
+
+#
+# custom host
+#
+
+add_executable(edbhost host/host.cc emain_u.c)
+target_include_directories(edbhost PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
+target_link_libraries(edbhost openenclave::oehost)
+
+add_custom_command(
+  OUTPUT emain_t.c emain_u.c
+  DEPENDS host/emain.edl
+  COMMAND openenclave::oeedger8r ${CMAKE_SOURCE_DIR}/host/emain.edl --search-path
+          ${OE_INCLUDEDIR} --search-path ${OE_INCLUDEDIR}/openenclave/edl/sgx)
