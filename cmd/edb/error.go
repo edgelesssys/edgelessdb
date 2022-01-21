@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/edgelesssys/edgelessdb/edb/core"
@@ -27,7 +28,10 @@ import (
 	"github.com/fatih/color"
 )
 
-const errRocksDBInit = "Plugin 'ROCKSDB' registration as a STORAGE ENGINE failed."
+const (
+	errRocksDBInit = "Plugin 'ROCKSDB' registration as a STORAGE ENGINE failed."
+	errBind        = "Can't start server: Bind on TCP/IP port. Got error:"
+)
 
 func exit(status int) {
 	determineError() // Print more specific error whenever we can detect one
@@ -58,12 +62,22 @@ func determineError() {
 		return
 	}
 	errorLog := string(errorLogBytes)
+
 	if strings.Contains(errorLog, errRocksDBInit) {
 		fmt.Fprint(os.Stderr, errorLog) // Always print error log in this case, as we expect that a failed initialization should not leak any sensitive data
 		color.Red("eRocksDB failed to initialize correctly.")
 		color.Red("This likely failed due to an incorrect key being used to decrypt the database or the database being corrupted.")
 		color.Red("Make sure you run edb on the same machine as it was initialized on.")
 	}
+	if strings.Contains(errorLog, errBind) {
+		matches := regexp.MustCompile(`running on port: (\d+) \?`).FindStringSubmatch(errorLog)
+		if len(matches) == 2 {
+			color.Red("Bind on TCP/IP port %v failed.", matches[1])
+		} else {
+			color.Red("Bind on TCP/IP port failed.")
+		}
+	}
+
 	if pointUserToDebugLog {
 		color.Red("You can find the error log at: %s", strings.TrimPrefix(errorLogPath, "/edg/hostfs"))
 	}
