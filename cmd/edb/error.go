@@ -27,7 +27,7 @@ import (
 	"github.com/fatih/color"
 )
 
-const errRocksDBInitFailed = "Plugin 'ROCKSDB' registration as a STORAGE ENGINE failed."
+const errRocksDBInit = "Plugin 'ROCKSDB' registration as a STORAGE ENGINE failed."
 
 func exit(status int) {
 	determineError() // Print more specific error whenever we can detect one
@@ -44,28 +44,27 @@ func determineError() {
 		errorLogBasePath = internalPath
 	} else {
 		logDir := os.Getenv(core.EnvLogDir)
-		if logDir != "" {
-			errorLogBasePath = hostPath(logDir)
-			pointUserToDebugLog = true
-		} else {
+		if logDir == "" {
 			// Cannot determine, as this was printed to stderr. User needs to look into the terminal by themself.
 			return
 		}
+		errorLogBasePath = hostPath(logDir)
+		pointUserToDebugLog = true
 	}
 
-	errorLogBytes, err := ioutil.ReadFile(filepath.Join(errorLogBasePath, db.FilenameErrorLog))
+	errorLogPath := filepath.Join(errorLogBasePath, db.FilenameErrorLog)
+	errorLogBytes, err := ioutil.ReadFile(errorLogPath)
 	if err != nil {
 		return
 	}
 	errorLog := string(errorLogBytes)
-	if strings.Contains(errorLog, errRocksDBInitFailed) {
+	if strings.Contains(errorLog, errRocksDBInit) {
 		fmt.Fprint(os.Stderr, errorLog) // Always print error log in this case, as we expect that a failed initialization should not leak any sensitive data
 		color.Red("eRocksDB failed to initialize correctly.")
 		color.Red("This likely failed due to an incorrect key being used to decrypt the database or the database being corrupted.")
 		color.Red("Make sure you run edb on the same machine as it was initialized on.")
 	}
 	if pointUserToDebugLog {
-		cleanPath := strings.TrimPrefix(filepath.Join(errorLogBasePath, db.FilenameErrorLog), "/edg/hostfs")
-		color.Red("You can find the error log at: %s", cleanPath)
+		color.Red("You can find the error log at: %s", strings.TrimPrefix(errorLogPath, "/edg/hostfs"))
 	}
 }
