@@ -16,7 +16,7 @@
 #include <openenclave/ert_stubs.h>
 
 ERT_STUB(backtrace_symbols_fd, 0)
-ERT_STUB(fedisableexcept, -1)
+ERT_STUB_SILENT(fedisableexcept, -1)
 ERT_STUB(getcontext, -1)
 ERT_STUB_SILENT(gnu_dev_major, 0)
 ERT_STUB_SILENT(gnu_dev_minor, 0)
