@@ -58,6 +58,9 @@ After building, you can run EdgelessDB from the build directory:
 ./edb
 ```
 
+## "not implemented" errors
+If you built a debug enclave, you may get `not implemented` errors at runtime. This is because Edgeless RT doesn't implement all syscalls and POSIX functions. EdgelessDB doesn't strictly rely on the missing ones, so you can ignore the errors.
+
 ## Test
 EdgelessDB tests verify basic SQL functionality and all of the additional CC features. In addition, we use MariaDB tests to ensure that we retain compatibility.
 
@@ -87,5 +90,3 @@ make emariadbd
 mariadb/scripts/mysql_install_db --srcdir=../3rdparty/edgeless-mariadb --auth-root-authentication-method=normal --no-defaults
 erthost emariadbd.signed --no-defaults --datadir=./data --default-storage-engine=rocksdb
 ```
-
-You may get `not implemented` errors. This is because Edgeless RT doesn't implement all syscalls and POSIX functions. emariadbd doesn't strictly rely on the missing ones, so you can ignore the errors.
