@@ -60,10 +60,12 @@ import (
 	"google.golang.org/grpc/credentials"
 )
 
-var exe = flag.String("e", "", "EDB executable")
-var showEdbOutput = flag.Bool("show-edb-output", false, "")
-var addrAPI, addrDB string
-var coordinatorAddress string // For Marblerun integration tests
+var (
+	exe                = flag.String("e", "", "EDB executable")
+	showEdbOutput      = flag.Bool("show-edb-output", false, "")
+	addrAPI, addrDB    string
+	coordinatorAddress string // For Marblerun integration tests
+)
 
 func TestMain(m *testing.M) {
 	flag.Parse()
@@ -207,6 +209,35 @@ func TestPersistence(t *testing.T) {
 	assert.Nil(db.QueryRow("SELECT i FROM test.data").Scan(&val))
 	db.Close()
 	assert.Equal(2., val)
+}
+
+func TestCharsetIsUtf8mb4(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	caCert, caKey := createCertificate("ca", "", "")
+	usrCert, usrKey := createCertificate("usr", caCert, caKey)
+
+	manifest := createManifest(caCert, []string{
+		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
+	}, false, "")
+
+	setConfig(false, "")
+	defer cleanupConfig()
+	process := startEDB("")
+	require.NotNil(process)
+	defer process.Kill()
+
+	serverCert := getServerCertificate()
+	_, err := postManifest(serverCert, manifest, true)
+	require.NoError(err)
+
+	db := sqlOpen("usr", usrCert, usrKey, serverCert)
+	defer db.Close()
+
+	var name, charset string
+	require.NoError(db.QueryRow("SHOW VARIABLES LIKE 'character_set_server'").Scan(&name, &charset))
+	assert.Equal("utf8mb4", charset)
 }
 
 func TestInvalidQueryInManifest(t *testing.T) {
@@ -946,16 +977,19 @@ type marbleServer struct {
 }
 
 func (m marbleServer) Activate(context.Context, *rpc.ActivationReq) (*rpc.ActivationResp, error) {
-	return &rpc.ActivationResp{Parameters: &rpc.Parameters{
-		Env: map[string][]byte{
-			core.EnvAPIAddress:             []byte(addrAPI),
-			core.EnvDatabaseAddress:        []byte(addrDB),
-			core.EnvDataPath:               []byte(m.dataDir),
-			core.ERocksDBMasterKeyVar:      []byte("4142434445464748494a4b4c4d4e4f50"),
-			marble.MarbleEnvironmentRootCA: []byte(m.rootCert),
-			db.EnvRootCertificate:          []byte(m.secretRootCert),
-			db.EnvRootKey:                  []byte(m.secretRootKey),
-			core.EnvManifestFile:           []byte("/tmp/manifest.json")},
-		Files: map[string][]byte{"/tmp/manifest.json": m.manifest}},
+	return &rpc.ActivationResp{
+		Parameters: &rpc.Parameters{
+			Env: map[string][]byte{
+				core.EnvAPIAddress:             []byte(addrAPI),
+				core.EnvDatabaseAddress:        []byte(addrDB),
+				core.EnvDataPath:               []byte(m.dataDir),
+				core.ERocksDBMasterKeyVar:      []byte("4142434445464748494a4b4c4d4e4f50"),
+				marble.MarbleEnvironmentRootCA: []byte(m.rootCert),
+				db.EnvRootCertificate:          []byte(m.secretRootCert),
+				db.EnvRootKey:                  []byte(m.secretRootKey),
+				core.EnvManifestFile:           []byte("/tmp/manifest.json"),
+			},
+			Files: map[string][]byte{"/tmp/manifest.json": m.manifest},
+		},
 	}, nil
 }
