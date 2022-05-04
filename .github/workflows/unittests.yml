@@ -13,10 +13,11 @@ jobs:
       image: ghcr.io/edgelesssys/edgelessrt-dev:nightly
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Build Environment
         run: |
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           mkdir build
           apt-get update
           apt-get install -y libncurses5-dev libcurl4-openssl-dev bison liblz4-dev bbe
