@@ -193,22 +193,8 @@ func (c *Core) StartDatabase() error {
 		return err
 	}
 
-	var cert []byte
-	if c.isMarble {
-		var err error
-		cert, err = c.getCertificateCA()
-		if err != nil {
-			return err
-		}
-	} else {
-		cert, _ = c.db.GetCertificate()
-	}
-	hash := sha256.Sum256(cert)
-	var err error
-	c.report, err = c.rt.GetRemoteReport(hash[:])
-	if err != nil {
-		rt.Log.Printf("Failed to get quote: %v", err)
-		rt.Log.Print("Attestation will not be available.")
+	if err := c.GenerateReport(); err != nil {
+		return err
 	}
 
 	// If database is not initialized yet and a manifest file has been specified, initialize the database.
@@ -239,6 +225,30 @@ func (c *Core) StartDatabase() error {
 		color.Red("Please make sure your MarbleRun manifest does specify the required environment variable *and* manifest file.")
 		color.Red("For more information: https://edglss.cc/doc-edb-marblerun")
 		return errors.New("marblerun did not supply any manifest")
+	}
+
+	return nil
+}
+
+func (c *Core) GenerateReport() error {
+	var cert []byte
+	if c.isMarble {
+		var err error
+		cert, err = c.getCertificateCA()
+		if err != nil {
+			return err
+		}
+	} else {
+		cert, _ = c.db.GetCertificate()
+	}
+	hash := sha256.Sum256(cert)
+	var err error
+	c.report, err = c.rt.GetRemoteReport(hash[:])
+
+	// If the report generation failed and attestation is not available, just warn the user, but do not cause the calling code to abort by returning an error.
+	if err != nil {
+		rt.Log.Printf("Failed to get quote: %v", err)
+		rt.Log.Print("Attestation will not be available.")
 	}
 
 	return nil
