@@ -1,3 +1,4 @@
+//go:build integration
 // +build integration
 
 /* Copyright (c) Edgeless Systems GmbH
@@ -63,6 +64,8 @@ import (
 var (
 	exe                = flag.String("e", "", "EDB executable")
 	showEdbOutput      = flag.Bool("show-edb-output", false, "")
+	attestationConfig  = flag.String("sgx-config", "", "Path to SGX config (containing UniqueID or triplet of SignerID, ProductID and SecurityVersion) to attestate against. Required to enable DCAP attestation testing.")
+	attestationEnabled = os.Getenv("DCAP_TEST_ENABLED") == "1"
 	addrAPI, addrDB    string
 	coordinatorAddress string // For Marblerun integration tests
 )
@@ -70,10 +73,18 @@ var (
 func TestMain(m *testing.M) {
 	flag.Parse()
 	if *exe == "" {
-		log.Fatalln("You must provide the path of the EDB executable using th -e flag.")
+		log.Fatalln("You must provide the path of the EDB executable using the -e flag.")
 	}
 	if _, err := os.Stat(*exe); err != nil {
 		log.Fatalln(err)
+	}
+	if attestationEnabled && *attestationConfig != "" {
+		log.Println("Testing with DCAP attestation enabled.")
+		if _, err := os.Stat(*attestationConfig); err != nil {
+			log.Fatalln(err)
+		}
+	} else {
+		log.Println("Testing with DCAP attestation disabled.")
 	}
 
 	// get unused ports
@@ -768,7 +779,13 @@ func toPem(certBytes []byte, priv *ecdsa.PrivateKey) (cert, key string) {
 }
 
 func getServerCertificate() string {
-	blocks, err := era.InsecureGetCertificate(addrAPI)
+	var blocks []*pem.Block
+	var err error
+	if attestationEnabled && *attestationConfig != "" {
+		blocks, err = era.GetCertificate(addrAPI, *attestationConfig)
+	} else {
+		blocks, err = era.InsecureGetCertificate(addrAPI)
+	}
 	if err != nil {
 		panic(err)
 	}
