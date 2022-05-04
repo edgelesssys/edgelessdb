@@ -41,7 +41,7 @@ func run(cfg core.Config, isMarble bool, internalPath string, internalAddress st
 	} else {
 		color.Red("edb failed to retrieve the database encryption key and has entered recovery mode.")
 		color.Red("You can use the /recover API endpoint to upload the recovery data which was generated when the manifest has been initialized originally.")
-		color.Red("For more information, consult the documentation.") // TODO: Add URL to our documentation
+		color.Red("For more information, visit: https://edglss.cc/doc-edb-recovery")
 
 		// Generate quote for temporary certificate in recovery mode
 		// Should not be able to panic as GenerateReport only returns errors in Marble mode, however recovery is not available in Marble mode.
