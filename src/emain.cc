@@ -28,6 +28,8 @@ using namespace ert;
 static constexpr auto kMemfsName = "edg_memfs";
 
 extern "C" void invokemain();
+extern "C" oe_result_t edgeless_syscall_hook();
+extern "C" void oe_register_syscall_hook(oe_result_t());
 
 int emain() {
   if (oe_load_module_host_epoll() != OE_OK ||
@@ -72,6 +74,8 @@ int emain() {
     cout << "mount hostfs failed\n";
     return EXIT_FAILURE;
   }
+
+  oe_register_syscall_hook(edgeless_syscall_hook);
 
   invokemain();
   return EXIT_SUCCESS;
