@@ -1,21 +1,24 @@
 WarningsAsErrors: '*'
 HeaderFilterRegex: '\.h$'
 Checks: "*,\
+-android-cloexec-fopen,\
 -cert-err58-cpp,\
 -cppcoreguidelines-avoid-goto,\
 -cppcoreguidelines-avoid-magic-numbers,\
 -cppcoreguidelines-owning-memory,\
 -cppcoreguidelines-pro-bounds-array-to-pointer-decay,\
 -cppcoreguidelines-pro-bounds-pointer-arithmetic,\
--cppcoreguidelines-pro-type-cstyle-cast,\
+-cppcoreguidelines-pro-type-const-cast,\
 -cppcoreguidelines-pro-type-reinterpret-cast,\
+-cppcoreguidelines-pro-type-union-access,\
 -cppcoreguidelines-pro-type-vararg,\
 -cppcoreguidelines-special-member-functions,\
 -fuchsia-default-arguments-calls,\
+-fuchsia-default-arguments-declarations,\
 -fuchsia-statically-constructed-objects,\
 -google-build-using-namespace,\
 -google-readability-braces-around-statements,\
--google-readability-casting,\
+-google-runtime-int,\
 -google-readability-todo,\
 -google-runtime-references,\
 -hicpp-avoid-goto,\
@@ -28,10 +31,12 @@ Checks: "*,\
 -llvm-include-order,\
 -llvm-qualified-auto,\
 -misc-non-private-member-variables-in-classes,\
+-modernize-use-nodiscard,\
 -modernize-use-default-member-init,\
 -modernize-use-trailing-return-type,\
 -modernize-use-using,\
 -readability-braces-around-statements,\
 -readability-implicit-bool-conversion,\
+-readability-isolate-declaration,\
 -readability-magic-numbers,\
 -readability-qualified-auto"

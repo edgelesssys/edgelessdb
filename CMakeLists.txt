@@ -222,7 +222,11 @@ add_custom_command(OUTPUT x86_64cpuid_.o
   DEPENDS x86_64cpuid.o
   COMMAND bbe -e 's/OPENSSL_rdtsc/OPENSSL_rdtsC/' x86_64cpuid.o > x86_64cpuid_.o)
 
-add_library(edb-lib src/emain.cc)
+add_library(edb-lib
+  src/emain.cc
+  src/syscall_file.cc
+  src/syscall_handler.cc)
+target_include_directories(edb-lib SYSTEM PRIVATE 3rdparty/edgeless-mariadb/include 3rdparty/edgeless-rocksdb/include)
 target_link_libraries(edb-lib PRIVATE openenclave::oe_includes)
 
 add_custom_target(edb-golib
@@ -258,8 +262,17 @@ configure_file(src/edb edb COPYONLY)
 #
 
 if(BUILD_TESTS)
+  add_executable(syscall_test
+    src/syscall_test.cc
+    src/syscall_file.cc
+    src/syscall_handler.cc)
+  target_compile_options(syscall_test PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=all)
+  target_link_options(syscall_test PRIVATE -fsanitize=address,undefined)
+  target_link_libraries(syscall_test openenclave::oe_includes)
+
   enable_testing()
   add_test(NAME unit-tests COMMAND go test -race -count=3 ./... WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
+  add_test(syscall-test syscall_test)
   add_test(NAME integration-noenclave COMMAND go test -v -tags integration ./edb -e ${CMAKE_BINARY_DIR}/edb-noenclave WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
   add_test(NAME integration COMMAND go test -v -tags integration ./edb -e ${CMAKE_BINARY_DIR}/edb -sgx-config ${CMAKE_BINARY_DIR}/edgelessdb-sgx.json WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 endif()
