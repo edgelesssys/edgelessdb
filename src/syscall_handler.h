@@ -40,6 +40,9 @@ class SyscallHandler final {
   // Returns an int if the syscall was handled; otherwise, returns none.
   std::optional<int> Syscall(long number, long x1, long x2);
 
+  // Returns the directory contents backed by the store.
+  std::vector<std::string> Dir(std::string_view pathname) const;
+
   // These are called for open files backed by the store.
   size_t Read(std::string_view path, void* buf, size_t count, size_t offset) const;
   void Write(std::string_view path, std::string_view buf, size_t offset);

@@ -54,6 +54,14 @@ struct FakeStore : Store {
     data[string(column_family)][string(key)] = value;
   }
 
+  std::vector<std::string> GetKeys(std::string_view column_family, std::string_view prefix) const override {
+    vector<string> result;
+    for (const auto& [k, v] : data.at(string(column_family)))
+      if (k.compare(0, prefix.size(), prefix) == 0)
+        result.push_back(k);
+    return result;
+  }
+
   map<string, map<string, string, less<>>, less<>> data;
 };
 }  // namespace
@@ -82,6 +90,7 @@ static void TestAccess() {
 
   // access folder of existing db succeeds
   ASSERT(0 == my_access("./mydb"));
+  ASSERT(0 == my_access("./mydb/"));
 
   // access other folder is not handled
   ASSERT(!my_access("./otherdb"));
@@ -135,10 +144,24 @@ static void TestOpenError() {
   ASSERT(!my_open("./foo/bar.baz"));
 }
 
+static void TestDir() {
+  const auto store = make_shared<FakeStore>();
+  store->Put(kCfNameDb, "./mydb/db.opt", {});
+  store->Put(kCfNameFrm, "./mydb/foo.frm", {});
+  store->Put(kCfNameFrm, "./mydb/bar.frm", {});
+  const SyscallHandler handler(store);
+
+  ASSERT(vector<string>{"mydb"} == handler.Dir("."));
+  ASSERT((vector<string>{"bar.frm", "foo.frm"}) == handler.Dir("./mydb"));
+  ASSERT((vector<string>{"bar.frm", "foo.frm"}) == handler.Dir("./mydb/"));
+  ASSERT(handler.Dir("./otherdb").empty());
+}
+
 int main() {
   TestAccess();
   TestFile();
   TestOpenError();
+  TestDir();
   cout << "pass\n";
 }
 

@@ -54,3 +54,13 @@ void RocksDB::Put(std::string_view column_family, std::string_view key, std::str
   if (!status.ok())
     throw runtime_error("rocksdb: " + status.ToString());
 }
+
+std::vector<std::string> RocksDB::GetKeys(std::string_view column_family, std::string_view prefix) const {
+  if (!myrocks::rdb)
+    return {};
+  const unique_ptr<rocksdb::Iterator> it(myrocks::rdb->NewIterator({}, GetCf(column_family)));
+  vector<string> result;
+  for (it->Seek(prefix); it->Valid() && it->key().starts_with(prefix); it->Next())
+    result.push_back(it->key().ToString());
+  return result;
+}

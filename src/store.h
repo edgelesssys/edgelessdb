@@ -28,6 +28,7 @@ class Store {
   virtual ~Store() = default;
   virtual std::optional<std::string> Get(std::string_view column_family, std::string_view key) const = 0;
   virtual void Put(std::string_view column_family, std::string_view key, std::string_view value) = 0;
+  virtual std::vector<std::string> GetKeys(std::string_view column_family, std::string_view prefix) const = 0;
 };
 
 typedef std::shared_ptr<Store> StorePtr;
