@@ -30,7 +30,7 @@
 using namespace std;
 using namespace edb;
 
-static const regex re_folder(R"(\./[^./]+)");
+static const regex re_folder(R"(\./[^./]+/?)");
 static const regex re_path_to_known_file(R"(\./[^./]+/(db\.opt|[^./]+\.frm))");
 
 static bool StrEndsWith(string_view str, string_view suffix) {
@@ -62,6 +62,33 @@ std::optional<int> SyscallHandler::Syscall(long number, long x1, long x2) {
     default:
       return {};
   }
+}
+
+std::vector<std::string> SyscallHandler::Dir(std::string_view pathname) const {
+  const bool is_db = pathname == ".";
+  if (!is_db && !regex_match(pathname.cbegin(), pathname.cend(), re_folder))
+    throw invalid_argument("unexpected path");
+
+  vector<string> result;
+
+  {
+    const lock_guard lock(mutex_);
+    if (is_db)
+      result = store_->GetKeys(kCfNameDb, {});
+    else
+      result = store_->GetKeys(kCfNameFrm, pathname);
+  }
+
+  if (is_db)
+    for (auto& x : result) {
+      x.erase(x.rfind('/'));  // remove /db.opt
+      x.erase(0, 2);          // remove ./
+    }
+  else
+    for (auto& x : result)
+      x.erase(0, x.rfind('/') + 1);  // remove path before filename
+
+  return result;
 }
 
 size_t SyscallHandler::Read(std::string_view path, void* buf, size_t count, size_t offset) const {
@@ -130,7 +157,9 @@ std::optional<int> SyscallHandler::Access(const char* pathname) const {
       throw invalid_argument("unexpected pathname");
   } else if (regex_match(path.cbegin(), path.cend(), re_folder)) {
     // It might be a db folder. Check if db.opt exists.
-    path += "/db.opt";
+    if (path.back() != '/')
+      path += '/';
+    path += "db.opt";
   } else
     return {};
 
