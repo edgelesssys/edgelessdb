@@ -224,8 +224,10 @@ add_custom_command(OUTPUT x86_64cpuid_.o
 
 add_library(edb-lib
   src/emain.cc
+  src/rocksdb.cc
   src/syscall_file.cc
-  src/syscall_handler.cc)
+  src/syscall_handler.cc
+  src/syscall_hook.cc)
 target_include_directories(edb-lib SYSTEM PRIVATE 3rdparty/edgeless-mariadb/include 3rdparty/edgeless-rocksdb/include)
 target_link_libraries(edb-lib PRIVATE openenclave::oe_includes)
 

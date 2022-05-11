@@ -136,8 +136,7 @@ static int file_ftruncate(oe_fd_t* /*desc*/, oe_off_t /*length*/) {
 }
 
 static int file_fsync(oe_fd_t* /*desc*/) {
-  errno = ENOSYS;
-  return -1;
+  return 0;
 }
 
 int edb::RedirectOpenFile(std::string_view path, SyscallHandler* handler) {
