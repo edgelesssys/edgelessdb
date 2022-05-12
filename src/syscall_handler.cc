@@ -68,6 +68,8 @@ std::optional<int> SyscallHandler::Syscall(long number, long x1, long x2) {
       return Open(reinterpret_cast<char*>(x1), static_cast<int>(x2));
     case SYS_access:
       return Access(reinterpret_cast<char*>(x1));
+    case SYS_unlink:
+      return Unlink(reinterpret_cast<char*>(x1));
     default:
       return {};
   }
@@ -140,6 +142,12 @@ void SyscallHandler::Write(std::string_view path, std::string_view buf, size_t o
   store_->Put(cf, path, value);
 }
 
+size_t SyscallHandler::Size(std::string_view path) const {
+  const string_view cf = GetCf(path);
+  const lock_guard lock(mutex_);
+  return store_->Get(cf, path).value_or(string()).size();
+}
+
 std::optional<int> SyscallHandler::Open(const char* pathname, int flags) {
   assert(pathname && *pathname);
   const string path = NormalizePath(pathname);
@@ -181,6 +189,20 @@ std::optional<int> SyscallHandler::Access(const char* pathname) const {
 
   errno = ENOENT;
   return -1;
+}
+
+std::optional<int> SyscallHandler::Unlink(const char* pathname) {
+  assert(pathname && *pathname);
+
+  const string_view path = pathname;
+  if (!IsKnownExtension(path))
+    return {};
+
+  const string_view cf = GetCf(path);
+
+  const lock_guard lock(mutex_);
+  store_->Delete(cf, path);
+  return 0;
 }
 
 bool SyscallHandler::Exists(std::string_view path) const {

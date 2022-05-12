@@ -15,7 +15,10 @@
 
 #include "syscall_file.h"
 
+#include <sys/stat.h>
+
 #include <cassert>
+#include <cstring>
 #include <exception>
 #include <functional>
 #include <mutex>
@@ -94,9 +97,38 @@ static oe_host_fd_t file_get_host_fd(oe_fd_t* /*desc*/) {
   return -1;
 }
 
-static oe_off_t file_lseek(oe_fd_t* /*desc*/, oe_off_t /*offset*/, int /*whence*/) {
-  errno = ENOSYS;
-  return -1;
+static oe_off_t file_lseek(oe_fd_t* desc, oe_off_t offset, int whence) {
+  try {
+    auto& file = *reinterpret_cast<File*>(desc);
+    const lock_guard lock(file.mut);
+
+    switch (whence) {
+      case SEEK_SET:
+        break;
+      case SEEK_CUR:
+        offset += file.offset;
+        break;
+      case SEEK_END:
+        offset += file.handler->Size(file.path);
+        break;
+      default:
+        errno = EINVAL;
+        return -1;
+    }
+
+    if (offset < 0) {
+      errno = EINVAL;
+      return -1;
+    }
+
+    file.offset = offset;
+  } catch (const exception& ex) {
+    oe_log(OE_LOG_LEVEL_ERROR, "file_lseek: %s\n", ex.what());
+    errno = EIO;
+    return -1;
+  }
+
+  return offset;
 }
 
 static ssize_t file_pread(
@@ -125,9 +157,27 @@ static int file_getdents64(
   return -1;
 }
 
-static int file_fstat(oe_fd_t* /*desc*/, struct oe_stat_t* /*buf*/) {
-  errno = ENOSYS;
-  return -1;
+static int file_fstat(oe_fd_t* desc, struct oe_stat_t* buf) {
+  auto& st = *reinterpret_cast<struct stat*>(buf);
+
+  // Zero the stat buf, but consider that oe_stat is smaller because it doesn't contain the unused fields at the end of stat.
+  // Size taken from a static_assert in openenclave/include/openenclave/internal/syscall/sys/stat.h
+  // As the struct is generated on build from an EDL file, we cannot include it, but must hardcode the size here.
+  constexpr size_t sizeof_oe_stat = 120;
+  static_assert(sizeof_oe_stat < sizeof st);
+  memset(&st, 0, sizeof_oe_stat);
+
+  try {
+    auto& file = *reinterpret_cast<File*>(desc);
+    const lock_guard lock(file.mut);
+    st.st_size = file.handler->Size(file.path);
+  } catch (const exception& ex) {
+    oe_log(OE_LOG_LEVEL_ERROR, "file_fstat: %s\n", ex.what());
+    errno = EIO;
+    return -1;
+  }
+
+  return 0;
 }
 
 static int file_ftruncate(oe_fd_t* /*desc*/, oe_off_t /*length*/) {

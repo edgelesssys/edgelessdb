@@ -55,6 +55,14 @@ void RocksDB::Put(std::string_view column_family, std::string_view key, std::str
     throw runtime_error("rocksdb: " + status.ToString());
 }
 
+void RocksDB::Delete(std::string_view column_family, std::string_view key) {
+  if (!myrocks::rdb)
+    throw logic_error("rocksdb: delete called before store has been initialized");
+  const auto status = myrocks::rdb->Delete({}, GetCf(column_family), key);
+  if (!status.ok())
+    throw runtime_error("rocksdb: " + status.ToString());
+}
+
 std::vector<std::string> RocksDB::GetKeys(std::string_view column_family, std::string_view prefix) const {
   if (!myrocks::rdb)
     return {};

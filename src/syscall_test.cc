@@ -54,6 +54,10 @@ struct FakeStore : Store {
     data[string(column_family)][string(key)] = value;
   }
 
+  void Delete(std::string_view column_family, std::string_view key) override {
+    data.at(string(column_family)).erase(string(key));
+  }
+
   std::vector<std::string> GetKeys(std::string_view column_family, std::string_view prefix) const override {
     vector<string> result;
     for (const auto& [k, v] : data.at(string(column_family)))
@@ -144,6 +148,22 @@ static void TestOpenError() {
   ASSERT(!my_open("./foo/bar.baz"));
 }
 
+static void TestUnlink() {
+  const auto store = make_shared<FakeStore>();
+  store->Put(kCfNameDb, "./mydb/db.opt", {});
+  store->Put(kCfNameFrm, "./mydb/mytab.frm", {});
+  SyscallHandler handler(store);
+
+  const auto my_unlink = [&handler](const char* path) {
+    return handler.Syscall(SYS_unlink, reinterpret_cast<long>(path), 0);
+  };
+
+  ASSERT(0 == my_unlink("./mydb/db.opt"));
+  ASSERT(0 == my_unlink("./mydb/mytab.frm"));
+  ASSERT(!store->Get(kCfNameDb, "./mydb/db.opt"));
+  ASSERT(!store->Get(kCfNameFrm, "./mydb/mytab.frm"));
+}
+
 static void TestDir() {
   const auto store = make_shared<FakeStore>();
   store->Put(kCfNameDb, "./mydb/db.opt", {});
@@ -164,6 +184,7 @@ int main() {
   TestAccess();
   TestFile();
   TestOpenError();
+  TestUnlink();
   TestDir();
   cout << "pass\n";
 }

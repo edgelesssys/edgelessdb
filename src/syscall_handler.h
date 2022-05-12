@@ -46,10 +46,12 @@ class SyscallHandler final {
   // These are called for open files backed by the store.
   size_t Read(std::string_view path, void* buf, size_t count, size_t offset) const;
   void Write(std::string_view path, std::string_view buf, size_t offset);
+  size_t Size(std::string_view path) const;
 
  private:
   std::optional<int> Open(const char* pathname, int flags);
   std::optional<int> Access(const char* pathname) const;
+  std::optional<int> Unlink(const char* pathname);
   bool Exists(std::string_view path) const;
 
   StorePtr store_;
