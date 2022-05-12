@@ -68,6 +68,8 @@ std::optional<int> SyscallHandler::Syscall(long number, long x1, long x2) {
       return Open(reinterpret_cast<char*>(x1), static_cast<int>(x2));
     case SYS_access:
       return Access(reinterpret_cast<char*>(x1));
+    case SYS_rename:
+      return Rename(reinterpret_cast<char*>(x1), reinterpret_cast<char*>(x2));
     case SYS_unlink:
       return Unlink(reinterpret_cast<char*>(x1));
     default:
@@ -189,6 +191,23 @@ std::optional<int> SyscallHandler::Access(const char* pathname) const {
 
   errno = ENOENT;
   return -1;
+}
+
+std::optional<int> SyscallHandler::Rename(const char* oldpath, const char* newpath) {
+  if (!StrEndsWith(oldpath, ".frm"))
+    return {};
+
+  if (!regex_match(oldpath, re_path_to_known_file))
+    throw invalid_argument("unexpected oldpath");
+  if (!regex_match(newpath, re_path_to_known_file))
+    throw invalid_argument("unexpected newpath");
+
+  // both old and new are in the store
+  const lock_guard lock(mutex_);
+  const auto value = store_->Get(kCfNameFrm, oldpath);
+  store_->Put(kCfNameFrm, newpath, value.value());
+  store_->Delete(kCfNameFrm, oldpath);
+  return 0;
 }
 
 std::optional<int> SyscallHandler::Unlink(const char* pathname) {

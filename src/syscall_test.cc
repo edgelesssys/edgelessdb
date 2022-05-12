@@ -148,6 +148,20 @@ static void TestOpenError() {
   ASSERT(!my_open("./foo/bar.baz"));
 }
 
+static void TestRename() {
+  const auto store = make_shared<FakeStore>();
+  store->Put(kCfNameFrm, "./mydb/oldname.frm", "foo");
+  SyscallHandler handler(store);
+
+  const auto my_rename = [&handler](const char* oldpath, const char* newpath) {
+    return handler.Syscall(SYS_rename, reinterpret_cast<long>(oldpath), reinterpret_cast<long>(newpath));
+  };
+
+  ASSERT(0 == my_rename("./mydb/oldname.frm", "./mydb/newname.frm"));
+  ASSERT(!store->Get(kCfNameFrm, "./mydb/oldname.frm"));
+  ASSERT("foo" == store->Get(kCfNameFrm, "./mydb/newname.frm"));
+}
+
 static void TestUnlink() {
   const auto store = make_shared<FakeStore>();
   store->Put(kCfNameDb, "./mydb/db.opt", {});
@@ -184,6 +198,7 @@ int main() {
   TestAccess();
   TestFile();
   TestOpenError();
+  TestRename();
   TestUnlink();
   TestDir();
   cout << "pass\n";
