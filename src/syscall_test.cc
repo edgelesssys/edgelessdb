@@ -152,8 +152,11 @@ static void TestDir() {
   const SyscallHandler handler(store);
 
   ASSERT(vector<string>{"mydb"} == handler.Dir("."));
+  ASSERT(vector<string>{"mydb"} == handler.Dir("/data/"));
   ASSERT((vector<string>{"bar.frm", "foo.frm"}) == handler.Dir("./mydb"));
   ASSERT((vector<string>{"bar.frm", "foo.frm"}) == handler.Dir("./mydb/"));
+  ASSERT((vector<string>{"bar.frm", "foo.frm"}) == handler.Dir("/data/mydb"));
+  ASSERT((vector<string>{"bar.frm", "foo.frm"}) == handler.Dir("/data/mydb/"));
   ASSERT(handler.Dir("./otherdb").empty());
 }
 

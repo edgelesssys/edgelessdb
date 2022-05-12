@@ -49,6 +49,15 @@ static string_view GetCf(string_view path) {
   throw runtime_error("unexpected path");
 }
 
+static string NormalizePath(string_view path) {
+  const string_view datadir = "/data/";
+  if (path.compare(0, datadir.size(), datadir) != 0)
+    return string(path);
+  if (path == datadir)
+    return ".";
+  return "./" + string(path.substr(datadir.size()));
+}
+
 SyscallHandler::SyscallHandler(StorePtr store)
     : store_(move(store)) {
 }
@@ -65,8 +74,10 @@ std::optional<int> SyscallHandler::Syscall(long number, long x1, long x2) {
 }
 
 std::vector<std::string> SyscallHandler::Dir(std::string_view pathname) const {
-  const bool is_db = pathname == ".";
-  if (!is_db && !regex_match(pathname.cbegin(), pathname.cend(), re_folder))
+  const string path = NormalizePath(pathname);
+
+  const bool is_db = path == ".";
+  if (!is_db && !regex_match(path.cbegin(), path.cend(), re_folder))
     throw invalid_argument("unexpected path");
 
   vector<string> result;
@@ -76,7 +87,7 @@ std::vector<std::string> SyscallHandler::Dir(std::string_view pathname) const {
     if (is_db)
       result = store_->GetKeys(kCfNameDb, {});
     else
-      result = store_->GetKeys(kCfNameFrm, pathname);
+      result = store_->GetKeys(kCfNameFrm, path);
   }
 
   if (is_db)
@@ -131,7 +142,7 @@ void SyscallHandler::Write(std::string_view path, std::string_view buf, size_t o
 
 std::optional<int> SyscallHandler::Open(const char* pathname, int flags) {
   assert(pathname && *pathname);
-  const string_view path = pathname;
+  const string path = NormalizePath(pathname);
 
   if (!IsKnownExtension(path))
     return {};
