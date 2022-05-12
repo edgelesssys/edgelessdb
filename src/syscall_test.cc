@@ -148,6 +148,11 @@ static void TestOpenError() {
 
   // open other file is not handled
   ASSERT(!my_open("./foo/bar.baz"));
+
+  // create frm without existing db.opt fails
+  errno = 0;
+  ASSERT(-1 == my_open("./foo/bar.frm", O_CREAT));
+  ASSERT(ENOENT == errno);
 }
 
 static void TestStat() {
