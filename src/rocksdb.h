@@ -23,6 +23,7 @@ class RocksDB final : public Store {
  public:
   std::optional<std::string> Get(std::string_view column_family, std::string_view key) const override;
   void Put(std::string_view column_family, std::string_view key, std::string_view value) override;
+  void Delete(std::string_view column_family, std::string_view key) override;
   std::vector<std::string> GetKeys(std::string_view column_family, std::string_view prefix) const override;
 };
 
