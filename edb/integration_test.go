@@ -222,7 +222,7 @@ func TestPersistence(t *testing.T) {
 	assert.Equal(2., val)
 }
 
-func TestCharsetIsUtf8mb4(t *testing.T) {
+func TestMisc(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
 
@@ -231,6 +231,7 @@ func TestCharsetIsUtf8mb4(t *testing.T) {
 
 	manifest := createManifest(caCert, []string{
 		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
+		"GRANT ALL ON *.* TO usr",
 	}, false, "")
 
 	setConfig(false, "")
@@ -246,9 +247,14 @@ func TestCharsetIsUtf8mb4(t *testing.T) {
 	db := sqlOpen("usr", usrCert, usrKey, serverCert)
 	defer db.Close()
 
+	// charset is utf8mb4
 	var name, charset string
 	require.NoError(db.QueryRow("SHOW VARIABLES LIKE 'character_set_server'").Scan(&name, &charset))
 	assert.Equal("utf8mb4", charset)
+
+	// create table in nonexistent db fails
+	_, err = db.Exec("CREATE TABLE test.data (i INT)")
+	assert.Error(err)
 }
 
 func TestInvalidQueryInManifest(t *testing.T) {
@@ -390,6 +396,7 @@ func TestLoggingDebug(t *testing.T) {
 	serverCert := getServerCertificate()
 
 	_, err = postManifest(serverCert, createManifest("", []string{
+		"CREATE DATABASE test",
 		"CREATE TABLE test.data (i INT)",
 	}, true, ""), true)
 	assert.Nil(err)
@@ -422,6 +429,7 @@ func TestLoggingNoDebug(t *testing.T) {
 	serverCert := getServerCertificate()
 
 	_, err = postManifest(serverCert, createManifest("", []string{
+		"CREATE DATABASE test",
 		"CREATE TABLE test.data (i INT)",
 	}, true, ""), true)
 	assert.Nil(err)
@@ -455,6 +463,7 @@ func TestLoggingDebugStderr(t *testing.T) {
 	serverCert := getServerCertificate()
 
 	_, err = postManifest(serverCert, createManifest("", []string{
+		"CREATE DATABASE test",
 		"CREATE TABLE test.data (i INT)",
 	}, true, ""), true)
 	assert.Nil(err)
@@ -493,6 +502,7 @@ func TestLoggingNotSetInManifest(t *testing.T) {
 	serverCert := getServerCertificate()
 
 	_, err = postManifest(serverCert, createManifest("", []string{
+		"CREATE DATABASE test",
 		"CREATE TABLE test.data (i INT)",
 	}, false, ""), false)
 	assert.NotNil(err)
@@ -537,7 +547,7 @@ func TestRecovery(t *testing.T) {
 
 	// Delete master key
 	dataPath := os.Getenv(core.EnvDataPath)
-	ioutil.WriteFile(filepath.Join(dataPath, "edb-persistence/sealed_key"), []byte{1, 2, 3}, 0600)
+	ioutil.WriteFile(filepath.Join(dataPath, "edb-persistence/sealed_key"), []byte{1, 2, 3}, 0o600)
 
 	// edb should start and go into recovery mode
 	process = startEDB("")

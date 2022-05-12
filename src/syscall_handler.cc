@@ -193,6 +193,12 @@ std::optional<int> SyscallHandler::Open(const char* pathname, int flags) {
     return -1;
   }
 
+  // don't create .frm file if db doesn't exist
+  if (StrEndsWith(path, ".frm") && !Exists(string(path, 0, path.rfind('/') + 1) + "db.opt")) {
+    errno = ENOENT;
+    return -1;
+  }
+
   return RedirectOpenFile(path, this);
 }
 
