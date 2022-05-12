@@ -84,6 +84,7 @@ static void TestAccess() {
   // access existing files succeeds
   ASSERT(0 == my_access("./mydb/db.opt"));
   ASSERT(0 == my_access("./mydb/mytab.frm"));
+  ASSERT(0 == my_access("mydb/db.opt"));
 
   // access nonexistent files fails
   errno = 0;
