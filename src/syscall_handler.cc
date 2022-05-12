@@ -16,10 +16,12 @@
 #include "syscall_handler.h"
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 
 #include <cassert>
 #include <cerrno>
+#include <cstdio>
 #include <cstring>
 #include <regex>
 #include <stdexcept>
@@ -32,6 +34,8 @@ using namespace edb;
 
 static const regex re_folder(R"(\./[^./]+/?)");
 static const regex re_path_to_known_file(R"(\./[^./]+/(db\.opt|[^./]+\.frm))");
+static const regex re_path_to_temp_frm_file(R"(\./[^./]+/[^./]+\.frm~)");
+static constexpr string_view temp_frm_ext = ".frm~";
 
 static bool StrEndsWith(string_view str, string_view suffix) {
   return str.size() >= suffix.size() && str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
@@ -58,6 +62,21 @@ static string NormalizePath(string_view path) {
   return "./" + string(path.substr(datadir.size()));
 }
 
+static string ReadFile(string_view path) {
+  const auto file = fopen(string(path).c_str(), "rb");
+  if (!file)
+    throw runtime_error("can't open file");
+  fseek(file, 0, SEEK_END);
+  const long size = ftell(file);
+  fseek(file, 0, SEEK_SET);
+  string buf(size, '\0');
+  const size_t res = fread(buf.data(), size, 1, file);
+  fclose(file);
+  if (res != 1)
+    throw runtime_error("can't read file");
+  return buf;
+}
+
 SyscallHandler::SyscallHandler(StorePtr store)
     : store_(move(store)) {
 }
@@ -66,6 +85,8 @@ std::optional<int> SyscallHandler::Syscall(long number, long x1, long x2) {
   switch (number) {
     case SYS_open:
       return Open(reinterpret_cast<char*>(x1), static_cast<int>(x2));
+    case SYS_stat:
+      return Stat(reinterpret_cast<char*>(x1), x2);
     case SYS_access:
       return Access(reinterpret_cast<char*>(x1));
     case SYS_rename:
@@ -154,8 +175,16 @@ std::optional<int> SyscallHandler::Open(const char* pathname, int flags) {
   assert(pathname && *pathname);
   const string path = NormalizePath(pathname);
 
-  if (!IsKnownExtension(path))
+  if (!IsKnownExtension(path)) {
+    // if it's a temporary frm file, make sure the directory exists
+    if (StrEndsWith(path, temp_frm_ext)) {
+      if (!regex_match(path.cbegin(), path.cend(), re_path_to_temp_frm_file))
+        throw invalid_argument("unexpected pathname");
+      mkdir(string(path, 0, path.rfind('/')).c_str(), 0777);
+    }
     return {};
+  }
+
   if (!regex_match(path.cbegin(), path.cend(), re_path_to_known_file))
     throw invalid_argument("unexpected pathname");
 
@@ -165,6 +194,35 @@ std::optional<int> SyscallHandler::Open(const char* pathname, int flags) {
   }
 
   return RedirectOpenFile(path, this);
+}
+
+std::optional<int> SyscallHandler::Stat(const char* pathname, long statbuf) const {
+  assert(pathname && *pathname);
+  assert(statbuf);
+
+  const string_view path = pathname;
+  if (!IsKnownExtension(path))
+    return {};
+  if (!regex_match(path.cbegin(), path.cend(), re_path_to_known_file))
+    throw invalid_argument("unexpected pathname");
+
+  const string_view cf = GetCf(path);
+  optional<string> value;
+
+  {
+    const lock_guard lock(mutex_);
+    value = store_->Get(cf, path);
+  }
+
+  if (!value) {
+    errno = ENOENT;
+    return -1;
+  }
+
+  auto& st = *reinterpret_cast<struct stat*>(statbuf);
+  memset(&st, 0, sizeof st);
+  st.st_size = value->size();
+  return 0;
 }
 
 std::optional<int> SyscallHandler::Access(const char* pathname) const {
@@ -194,20 +252,32 @@ std::optional<int> SyscallHandler::Access(const char* pathname) const {
 }
 
 std::optional<int> SyscallHandler::Rename(const char* oldpath, const char* newpath) {
-  if (!StrEndsWith(oldpath, ".frm"))
-    return {};
+  if (StrEndsWith(oldpath, ".frm") && StrEndsWith(newpath, ".frm")) {
+    if (!regex_match(oldpath, re_path_to_known_file))
+      throw invalid_argument("unexpected oldpath");
+    if (!regex_match(newpath, re_path_to_known_file))
+      throw invalid_argument("unexpected newpath");
 
-  if (!regex_match(oldpath, re_path_to_known_file))
-    throw invalid_argument("unexpected oldpath");
-  if (!regex_match(newpath, re_path_to_known_file))
-    throw invalid_argument("unexpected newpath");
+    // both old and new are in the store
+    const lock_guard lock(mutex_);
+    const auto value = store_->Get(kCfNameFrm, oldpath);
+    store_->Put(kCfNameFrm, newpath, value.value());
+    store_->Delete(kCfNameFrm, oldpath);
+    return 0;
+  }
 
-  // both old and new are in the store
-  const lock_guard lock(mutex_);
-  const auto value = store_->Get(kCfNameFrm, oldpath);
-  store_->Put(kCfNameFrm, newpath, value.value());
-  store_->Delete(kCfNameFrm, oldpath);
-  return 0;
+  if (StrEndsWith(oldpath, temp_frm_ext)) {
+    if (!regex_match(newpath, re_path_to_known_file))
+      throw invalid_argument("unexpected newpath");
+
+    // temp frm files are in memfs and should be moved into the store
+    const lock_guard lock(mutex_);
+    store_->Put(kCfNameFrm, newpath, ReadFile(oldpath));
+    remove(oldpath);
+    return 0;
+  }
+
+  return {};
 }
 
 std::optional<int> SyscallHandler::Unlink(const char* pathname) {
