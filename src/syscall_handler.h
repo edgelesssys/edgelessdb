@@ -50,6 +50,7 @@ class SyscallHandler final {
 
  private:
   std::optional<int> Open(const char* pathname, int flags);
+  std::optional<int> Stat(const char* pathname, long statbuf) const;
   std::optional<int> Access(const char* pathname) const;
   std::optional<int> Rename(const char* oldpath, const char* newpath);
   std::optional<int> Unlink(const char* pathname);

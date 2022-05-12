@@ -14,6 +14,7 @@
    Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1335  USA */
 
 #include <fcntl.h>
+#include <sys/stat.h>
 #include <sys/syscall.h>
 
 #include <cstdarg>
@@ -148,6 +149,35 @@ static void TestOpenError() {
   ASSERT(!my_open("./foo/bar.baz"));
 }
 
+static void TestStat() {
+  const auto store = make_shared<FakeStore>();
+  store->Put(kCfNameDb, "./mydb/db.opt", "aa");
+  store->Put(kCfNameFrm, "./mydb/mytab.frm", "aaa");
+  SyscallHandler handler(store);
+
+  const auto my_stat = [&handler](const char* path, struct stat* st) {
+    return handler.Syscall(SYS_stat, reinterpret_cast<long>(path), reinterpret_cast<long>(st));
+  };
+
+  // stat existing files succeeds
+  struct stat st {};
+  ASSERT(0 == my_stat("./mydb/db.opt", &st));
+  ASSERT(2 == st.st_size);
+  ASSERT(0 == my_stat("./mydb/mytab.frm", &st));
+  ASSERT(3 == st.st_size);
+
+  // stat nonexistent files fails
+  errno = 0;
+  ASSERT(-1 == my_stat("./otherdb/db.opt", &st));
+  ASSERT(ENOENT == errno);
+  errno = 0;
+  ASSERT(-1 == my_stat("./mydb/othertab.frm", &st));
+  ASSERT(ENOENT == errno);
+
+  // stat other file is not handled
+  ASSERT(!my_stat("./mydb/foo.bar", &st));
+}
+
 static void TestRename() {
   const auto store = make_shared<FakeStore>();
   store->Put(kCfNameFrm, "./mydb/oldname.frm", "foo");
@@ -198,6 +228,7 @@ int main() {
   TestAccess();
   TestFile();
   TestOpenError();
+  TestStat();
   TestRename();
   TestUnlink();
   TestDir();
