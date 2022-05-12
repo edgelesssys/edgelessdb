@@ -232,8 +232,11 @@ std::optional<int> SyscallHandler::Access(const char* pathname) const {
   const bool known_ext = IsKnownExtension(path);
 
   if (known_ext) {
-    if (!regex_match(path.cbegin(), path.cend(), re_path_to_known_file))
-      throw invalid_argument("unexpected pathname");
+    if (!regex_match(path.cbegin(), path.cend(), re_path_to_known_file)) {
+      path.insert(0, "./");
+      if (!regex_match(path.cbegin(), path.cend(), re_path_to_known_file))
+        throw invalid_argument("unexpected pathname");
+    }
   } else if (regex_match(path.cbegin(), path.cend(), re_folder)) {
     // It might be a db folder. Check if db.opt exists.
     if (path.back() != '/')
