@@ -53,6 +53,8 @@ void RocksDB::Put(std::string_view column_family, std::string_view key, std::str
   const auto status = myrocks::rdb->Put({}, GetCf(column_family), key, value);
   if (!status.ok())
     throw runtime_error("rocksdb: " + status.ToString());
+  // MyRocks disables automatic flush in RocksDB, so we must flush manually.
+  myrocks::rdb->FlushWAL(true);
 }
 
 void RocksDB::Delete(std::string_view column_family, std::string_view key) {
@@ -61,6 +63,8 @@ void RocksDB::Delete(std::string_view column_family, std::string_view key) {
   const auto status = myrocks::rdb->Delete({}, GetCf(column_family), key);
   if (!status.ok())
     throw runtime_error("rocksdb: " + status.ToString());
+  // see comment in Put
+  myrocks::rdb->FlushWAL(true);
 }
 
 std::vector<std::string> RocksDB::GetKeys(std::string_view column_family, std::string_view prefix) const {

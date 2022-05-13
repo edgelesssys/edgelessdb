@@ -222,6 +222,49 @@ func TestPersistence(t *testing.T) {
 	assert.Equal(2., val)
 }
 
+func TestPersistenceEmptyDatabase(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	caCert, caKey := createCertificate("ca", "", "")
+	usrCert, usrKey := createCertificate("usr", caCert, caKey)
+
+	manifest := createManifest(caCert, []string{
+		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
+		"GRANT ALL ON *.* TO usr",
+	}, false, "")
+
+	setConfig(false, "")
+	defer cleanupConfig()
+
+	process := startEDB("")
+	require.NotNil(process)
+
+	serverCert := getServerCertificate()
+	_, err := postManifest(serverCert, manifest, true)
+	assert.Nil(err)
+
+	db := sqlOpen("usr", usrCert, usrKey, serverCert)
+	// regression: database creation wasn't persistently stored if it was the last action before ending the db process
+	_, err = db.Exec("CREATE DATABASE emptydb")
+	assert.Nil(err)
+	db.Close()
+
+	require.NoError(process.Kill())
+
+	// Restart
+	process = startEDB("")
+	require.NotNil(process, "restart failed!")
+	defer process.Kill()
+
+	db = sqlOpen("usr", usrCert, usrKey, serverCert)
+	defer db.Close()
+	rows, err := db.Query("SHOW DATABASES like 'emptydb'")
+	require.NoError(err)
+	require.True(rows.Next())
+	assert.False(rows.Next())
+}
+
 func TestMisc(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
