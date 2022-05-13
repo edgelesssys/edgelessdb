@@ -21,6 +21,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <iostream>
+#include <thread>
 
 using namespace std;
 using namespace ert;
@@ -31,15 +32,23 @@ extern "C" void invokemain();
 extern "C" oe_result_t edgeless_syscall_hook();
 extern "C" void oe_register_syscall_hook(oe_result_t());
 
-int emain() {
+static int _init = [] {
+#ifndef NDEBUG
+  // regression: module loading has been done in emain before and raced with a thread started before emain. This delay would
+  // trigger the bug reproducibly and it verifies that this code is really executed before the other thread is started.
+  this_thread::sleep_for(100ms);
+#endif
   if (oe_load_module_host_epoll() != OE_OK ||
       oe_load_module_host_file_system() != OE_OK ||
       oe_load_module_host_resolver() != OE_OK ||
       oe_load_module_host_socket_interface() != OE_OK) {
-    cout << "oe_load_module_host failed\n";
-    return EXIT_FAILURE;
+    puts("oe_load_module_host failed");
+    abort();
   }
+  return 0;
+}();
 
+int emain() {
   // Preparing memfs
   const Memfs memfs(kMemfsName);
   if (mount("/", "/memfs", kMemfsName, 0, nullptr) != 0) {
