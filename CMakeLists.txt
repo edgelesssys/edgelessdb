@@ -269,7 +269,7 @@ if(BUILD_TESTS)
     src/syscall_file.cc
     src/syscall_handler.cc)
   target_compile_options(syscall_test PRIVATE -fsanitize=address,undefined -fno-sanitize-recover=all)
-  target_link_options(syscall_test PRIVATE -fsanitize=address,undefined)
+  target_link_options(syscall_test PRIVATE -fsanitize=address,undefined -static-libasan)
   target_link_libraries(syscall_test openenclave::oe_includes)
 
   enable_testing()
