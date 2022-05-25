@@ -265,6 +265,41 @@ func TestPersistenceEmptyDatabase(t *testing.T) {
 	assert.False(rows.Next())
 }
 
+func TestAlterTable(t *testing.T) {
+	assert := assert.New(t)
+	require := require.New(t)
+
+	caCert, caKey := createCertificate("ca", "", "")
+	usrCert, usrKey := createCertificate("usr", caCert, caKey)
+
+	manifest := createManifest(caCert, []string{
+		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
+		"CREATE DATABASE test",
+		"GRANT ALL ON test.* TO usr",
+	}, false, "")
+
+	setConfig(false, "")
+	defer cleanupConfig()
+	process := startEDB("")
+	require.NotNil(process)
+	defer process.Kill()
+
+	serverCert := getServerCertificate()
+	_, err := postManifest(serverCert, manifest, true)
+	require.NoError(err)
+
+	db := sqlOpen("usr", usrCert, usrKey, serverCert)
+	defer db.Close()
+
+	// https://github.com/edgelesssys/edgelessdb/issues/93
+	_, err = db.Exec("CREATE TABLE test.data (i INT)")
+	require.NoError(err)
+	_, err = db.Exec("INSERT INTO test.data VALUES (2)")
+	require.NoError(err)
+	_, err = db.Exec("ALTER TABLE test.data ADD INDEX (i)")
+	assert.NoError(err)
+}
+
 func TestMisc(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)
