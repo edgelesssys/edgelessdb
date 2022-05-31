@@ -12,4 +12,5 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/tidwall/gjson v1.10.2 // indirect
 	google.golang.org/grpc v1.41.0
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
