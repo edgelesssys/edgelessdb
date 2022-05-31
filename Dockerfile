@@ -9,9 +9,9 @@ RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   doxygen \
   git \
   liblz4-dev=1.9.2-2ubuntu0.20.04.1 \
-  libssl-dev=1.1.1f-1ubuntu2.8 \
+  libssl-dev=1.1.1f-1ubuntu2.13 \
   ninja-build=1.10.0-1build1 \
-  zlib1g-dev=1:1.2.11.dfsg-2ubuntu1.2
+  zlib1g-dev=1:1.2.11.dfsg-2ubuntu1.3
 
 ARG erttag=v0.2.8 edbtag=v0.2.1
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
