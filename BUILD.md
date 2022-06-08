@@ -75,7 +75,7 @@ ctest --output-on-failure
 ```sh
 curl -k -d@src/test_manifest.json https://127.0.0.1:8080/manifest
 cd build/mariadb
-MYSQL_TEST_TLS=1 ctest --output-on-failure
+MARIADB_CC_TEST=1 MYSQL_TEST_TLS=1 ctest --output-on-failure
 ```
 
 ## Configuration
