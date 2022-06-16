@@ -85,7 +85,7 @@ func (c *Core) loadMasterKey() ([]byte, error) {
 
 	// If key was set, unseal from disk
 	if c.rt.IsEnclave() {
-		key, err = ecrypto.Unseal(key)
+		key, err = ecrypto.Unseal(key, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -140,14 +140,14 @@ func (c *Core) storeMasterKey(key []byte) error {
 	// Save master key
 	if c.rt.IsEnclave() {
 		var err error
-		key, err = ecrypto.SealWithProductKey(key)
+		key, err = ecrypto.SealWithProductKey(key, nil)
 		if err != nil {
 			return err
 		}
 	}
 
 	// Create dir
-	if err := os.MkdirAll(filepath.Join(c.cfg.DataPath, PersistenceDir), 0700); err != nil {
+	if err := os.MkdirAll(filepath.Join(c.cfg.DataPath, PersistenceDir), 0o700); err != nil {
 		return err
 	}
 
@@ -156,10 +156,10 @@ func (c *Core) storeMasterKey(key []byte) error {
 	if sealedKeyData, err := c.fs.ReadFile(fname); err == nil {
 		t := time.Now()
 		newFileName := fname + "_" + t.Format("20060102150405") + ".bak"
-		c.fs.WriteFile(newFileName, sealedKeyData, 0600)
+		c.fs.WriteFile(newFileName, sealedKeyData, 0o600)
 	}
 	// Write the sealed encryption key to disk
-	if err := c.fs.WriteFile(fname, key, 0600); err != nil {
+	if err := c.fs.WriteFile(fname, key, 0o600); err != nil {
 		return err
 	}
 
