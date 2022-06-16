@@ -52,7 +52,7 @@ their default values.
 | `edb.simulation`              |bool   | Needs be set to `true` when running on systems without SGX1+FLC capabilities | `false` |
 | `edb.sqlApiHost`              |string | The network address of the MySQL interface | `"0.0.0.0"` |
 | `edb.sqlApiPort`              |int    | Port of the MySQL interface | `3306` |
-| `global.image`                |object | EdgelessDB image configuration | `{"pullPolicy":"IfNotPresent","version":" v0.2.1","repository":"ghcr.io/edgelesssys"}` |
+| `global.image`                |object | EdgelessDB image configuration | `{"pullPolicy":"IfNotPresent","version":" v0.3.0","repository":"ghcr.io/edgelesssys"}` |
 | `global.podAnnotations`       |object | Additional annotations to add to all pods | `{}`|
 | `global.podLabels`            |object | Additional labels to add to all pods | `{}` |
 | `nodeSelector`                |object | NodeSelector section, See the [K8S documentation](https://kubernetes.io/docs/concepts/configuration/assign-pod-node/#nodeselector) for more information | `{"beta.kubernetes.io/os": "linux"}` |

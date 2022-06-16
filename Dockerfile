@@ -1,4 +1,4 @@
-FROM ubuntu:focal-20211006 AS build
+FROM ubuntu:focal-20220531 AS build
 
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   bbe \
@@ -13,7 +13,8 @@ RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   ninja-build=1.10.0-1build1 \
   zlib1g-dev=1:1.2.11.dfsg-2ubuntu1.3
 
-ARG erttag=v0.2.8 edbtag=v0.2.1
+ARG erttag=v0.3.3
+ARG edbtag=v0.3.0
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && git clone -b $edbtag --depth=1 https://github.com/edgelesssys/edgelessdb \
   && mkdir ertbuild edbbuild
@@ -38,8 +39,9 @@ RUN --mount=type=secret,id=signingkey,dst=/edbbuild/private.pem,required=true \
   && make sign-edb
 
 # deploy
-FROM ubuntu:focal-20211006
-ARG PSW_VERSION=2.15.100.3-focal1 DCAP_VERSION=1.12.100.3-focal1
+FROM ubuntu:focal-20220531
+ARG PSW_VERSION=2.17.100.3-focal1
+ARG DCAP_VERSION=1.14.100.3-focal1
 RUN apt update && apt install -y gnupg libcurl4 wget \
   && wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add \
   && echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' >> /etc/apt/sources.list \

@@ -870,7 +870,7 @@ func getServerCertificate() string {
 	var blocks []*pem.Block
 	var err error
 	if attestationEnabled && *attestationConfig != "" {
-		blocks, err = era.GetCertificate(addrAPI, *attestationConfig)
+		blocks, _, err = era.GetCertificate(addrAPI, *attestationConfig)
 	} else {
 		blocks, err = era.InsecureGetCertificate(addrAPI)
 	}
