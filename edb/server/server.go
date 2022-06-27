@@ -109,7 +109,7 @@ func RunServer(mux *http.ServeMux, address string, tlsConfig *tls.Config) {
 	}
 
 	rt.Log.Println("HTTP REST API listening on", address)
-	rt.Log.Println(server.ListenAndServeTLS("", ""))
+	rt.Log.Fatalln(server.ListenAndServeTLS("", ""))
 }
 
 func writeJSON(w http.ResponseWriter, v interface{}) {

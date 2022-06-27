@@ -45,6 +45,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sync"
 	"syscall"
 	"testing"
 	"time"
@@ -735,9 +736,13 @@ func cleanupConfig() {
 }
 
 // Call with empty string for standalone mode, call with path for Marble mode
-func startEDB(marbleUUIDPath string) *os.Process {
+func startEDB(marbleUUIDPath string) killer {
 	cmd := createEdbCmd(marbleUUIDPath)
+
+	wg := &sync.WaitGroup{}
+	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		if *showEdbOutput {
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stdout
@@ -751,10 +756,11 @@ func startEDB(marbleUUIDPath string) *os.Process {
 	}()
 
 	log.Println("EDB starting ...")
-	return waitForEDB(cmd)
+	waitForEDB(cmd)
+	return killer{proc: cmd.Process, wg: wg}
 }
 
-func waitForEDB(cmd *exec.Cmd) *os.Process {
+func waitForEDB(cmd *exec.Cmd) {
 	client := http.Client{Transport: &http.Transport{TLSClientConfig: &tls.Config{InsecureSkipVerify: true}}}
 	url := url.URL{Scheme: "https", Host: addrAPI, Path: "signature"}
 	for {
@@ -767,7 +773,7 @@ func waitForEDB(cmd *exec.Cmd) *os.Process {
 				panic(resp.Status)
 			}
 			cmd.Process.Pid *= -1 // let the Process object refer to the child process group
-			return cmd.Process
+			break
 		}
 	}
 }
@@ -1097,4 +1103,15 @@ func (m marbleServer) Activate(context.Context, *rpc.ActivationReq) (*rpc.Activa
 			Files: map[string][]byte{"/tmp/manifest.json": m.manifest},
 		},
 	}, nil
+}
+
+type killer struct {
+	proc *os.Process
+	wg   *sync.WaitGroup
+}
+
+func (k killer) Kill() error {
+	err := k.proc.Kill()
+	k.wg.Wait()
+	return err
 }
