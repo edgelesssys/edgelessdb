@@ -2,16 +2,16 @@ FROM ubuntu:focal-20220531 AS build
 
 RUN apt update && DEBIAN_FRONTEND=noninteractive apt install -y \
   bbe \
-  bison=2:3.5.1+dfsg-1 \
-  build-essential=12.8ubuntu1.1 \
-  clang-10=1:10.0.0-4ubuntu1 \
-  cmake=3.16.3-1ubuntu1 \
+  bison \
+  build-essential \
+  clang-10 \
+  cmake \
   doxygen \
   git \
-  liblz4-dev=1.9.2-2ubuntu0.20.04.1 \
-  libssl-dev=1.1.1f-1ubuntu2.13 \
-  ninja-build=1.10.0-1build1 \
-  zlib1g-dev=1:1.2.11.dfsg-2ubuntu1.3
+  liblz4-dev \
+  libssl-dev \
+  ninja-build \
+  zlib1g-dev
 
 ARG erttag=v0.3.3
 ARG edbtag=v0.3.0
