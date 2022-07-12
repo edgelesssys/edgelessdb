@@ -14,4 +14,4 @@ else
 	apt-get install -qq az-dcap-client
 fi
 
-./edb
+./edb "$@"
