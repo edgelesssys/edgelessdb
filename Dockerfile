@@ -36,7 +36,8 @@ RUN --mount=type=secret,id=signingkey,dst=/edbbuild/private.pem,required=true \
   cd edbbuild \
   && . /opt/edgelessrt/share/openenclave/openenclaverc \
   && cmake -DHEAPSIZE=$heapsize -DPRODUCTION=$production /edgelessdb \
-  && make sign-edb
+  && make sign-edb \
+  && cat edgelessdb-sgx.json
 
 # deploy
 FROM ubuntu:focal-20220531
