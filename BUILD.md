@@ -11,6 +11,12 @@ Add `--build-arg heapsize=x` where x is the desired enclave heap size in MB. By 
 
 Add `--build-arg production=ON` to build a production enclave. By default, a debug enclave is built.
 
+Get the [era](https://github.com/edgelesssys/era) configuration:
+
+```sh
+docker run --rm --entrypoint cat edb edgelessdb-sgx.json > edgelessdb-sgx.json
+```
+
 ## Run the Docker image
 You can run EdgelessDB in simulation mode on any system:
 ```sh
