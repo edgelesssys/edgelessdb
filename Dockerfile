@@ -61,7 +61,7 @@ RUN apt update && apt install -y gnupg libcurl4 wget \
   libsgx-qe3-logic=$DCAP_VERSION \
   libsgx-urts=$PSW_VERSION \
   && apt install -d az-dcap-client libsgx-dcap-default-qpl=$DCAP_VERSION
-COPY --from=build /edbbuild/edb /edbbuild/edb-enclave.signed /edgelessdb/src/entry.sh /
+COPY --from=build /edbbuild/edb /edbbuild/edb-enclave.signed /edbbuild/edgelessdb-sgx.json /edgelessdb/src/entry.sh /
 COPY --from=build /opt/edgelessrt/bin/erthost /opt/edgelessrt/bin/
 ENV PATH=${PATH}:/opt/edgelessrt/bin AZDCAP_DEBUG_LOG_LEVEL=error
 ENTRYPOINT ["/entry.sh"]
