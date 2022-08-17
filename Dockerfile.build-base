@@ -1,0 +1,14 @@
+FROM ubuntu:focal-20220801
+RUN apt-get update && apt-get install -dy --no-install-recommends \
+  bbe \
+  bison \
+  build-essential \
+  ca-certificates \
+  clang-10 \
+  cmake \
+  git \
+  liblz4-dev \
+  libncurses-dev \
+  libssl-dev \
+  ninja-build \
+  zlib1g-dev
