@@ -29,12 +29,12 @@ For details see [concepts](https://docs.edgeless.systems/edgelessdb/#/getting-st
 
 Run EdgelessDB on an SGX-capable system:
 ```sh
-docker run --name my-edb -p3306:3306 -p8080:8080 --privileged -v /dev/sgx:/dev/sgx -t ghcr.io/edgelesssys/edgelessdb-sgx-1gb
+docker run -t --name my-edb -p3306:3306 -p8080:8080 --device /dev/sgx_enclave --device /dev/sgx_provision ghcr.io/edgelesssys/edgelessdb-sgx-1gb
 ```
 
 Or try it in simulation mode on any system:
 ```sh
-docker run --name my-edb -p3306:3306 -p8080:8080 -e OE_SIMULATION=1 -t ghcr.io/edgelesssys/edgelessdb-sgx-1gb
+docker run -t --name my-edb -p3306:3306 -p8080:8080 -e OE_SIMULATION=1 ghcr.io/edgelesssys/edgelessdb-sgx-1gb
 ```
 
 You may want to start with [using EdgelessDB as a high-security SQL database](https://docs.edgeless.systems/edgelessdb/#/getting-started/quickstart-sgx) in a possibly untrusted environment.

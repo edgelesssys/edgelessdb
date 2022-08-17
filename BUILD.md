@@ -20,17 +20,17 @@ docker run --rm --entrypoint cat edb edgelessdb-sgx.json > edgelessdb-sgx.json
 ## Run the Docker image
 You can run EdgelessDB in simulation mode on any system:
 ```sh
-docker run --name my-edb -p3306:3306 -p8080:8080 -e OE_SIMULATION=1 -t edb
+docker run -t --name my-edb -p3306:3306 -p8080:8080 -e OE_SIMULATION=1 edb
 ```
 
 If your dev environment supports SGX-FLC:
 ```sh
-docker run --name my-edb -p3306:3306 -p8080:8080 --privileged -v /dev/sgx:/dev/sgx -t edb
+docker run -t --name my-edb -p3306:3306 -p8080:8080 --device /dev/sgx_enclave --device /dev/sgx_provision edb
 ```
 
 If your dev environment supports SGX without FLC:
 ```sh
-docker run --name my-edb -p3306:3306 -p8080:8080 --device /dev/isgx -v /var/run/aesmd:/var/run/aesmd -t edb
+docker run -t --name my-edb -p3306:3306 -p8080:8080 --device /dev/isgx -v /var/run/aesmd:/var/run/aesmd edb
 ```
 Note that you'll get attestation errors on such systems.
 
