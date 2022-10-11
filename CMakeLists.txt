@@ -46,7 +46,7 @@ set(MARIADB_CMAKE_ARGS
   -DPLUGIN_METADATA_LOCK_INFO=NO
   -DPLUGIN_MROONGA=NO
   -DPLUGIN_PARTITION=NO
-  -DPLUGIN_PERFSCHEMA=NO
+  -DPLUGIN_PERFSCHEMA=STATIC
   -DPLUGIN_QA_AUTH_CLIENT=NO
   -DPLUGIN_QA_AUTH_INTERFACE=NO
   -DPLUGIN_QA_AUTH_SERVER=NO
@@ -131,6 +131,7 @@ set(MARIADB_LIBS
   ${MARIADB}/storage/rocksdb/librocksdb_se.a
   ${MARIADB}/storage/rocksdb/librocksdb_aux_lib.a
   ${MARIADB}/storage/rocksdb/librocksdblib.a
+  ${MARIADB}/storage/perfschema/libperfschema.a
   lz4
 )
 
