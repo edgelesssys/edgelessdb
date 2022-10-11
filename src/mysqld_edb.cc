@@ -66,7 +66,9 @@ void edgeless_listen_internal() {
 
   // accept connections
   do {
-    const auto accepted_sock = mysql_socket_accept(key_socket_client_connection, listen_sock, nullptr, 0);
+    sockaddr addr{};
+    socklen_t addr_len = sizeof addr;
+    const auto accepted_sock = mysql_socket_accept(key_socket_client_connection, listen_sock, &addr, &addr_len);
     if (mysql_socket_getfd(accepted_sock) == INVALID_SOCKET)
       AbortPerror("accept");
     handle_accepted_socket(accepted_sock, listen_sock);
