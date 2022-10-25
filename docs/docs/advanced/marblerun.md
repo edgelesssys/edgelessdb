@@ -2,10 +2,10 @@
 
 To run EdgelessDB as a service in a confidential cluster, combine it with [MarbleRun](https://marblerun.sh).
 
-When running EdgelessDB as a Marble, secrets will be [managed by MarbleRun](https://docs.edgeless.systems/marblerun/#/features/secrets-management). EdgelessDB will no longer generate its own root certificate nor its sealing key. The root certificate for EdgelessDB needs to be defined in MarbleRun's manifest. Furthermore, EdgelessDB's own recovery method will be unavailable. MarbleRun will handle recovery for your entire cluster.
+When running EdgelessDB as a Marble, secrets will be [managed by MarbleRun](https://docs.edgeless.systems/marblerun/features/secrets-management). EdgelessDB will no longer generate its own root certificate nor its sealing key. The root certificate for EdgelessDB needs to be defined in MarbleRun's manifest. Furthermore, EdgelessDB's own recovery method will be unavailable. MarbleRun will handle recovery for your entire cluster.
 
 ## Extend the MarbleRun manifest
-To add EdgelessDB to your MarbleRun cluster, add to the [MarbleRun manifest](https://docs.edgeless.systems/marblerun/#/workflows/define-manifest)
+To add EdgelessDB to your MarbleRun cluster, add to the [MarbleRun manifest](https://docs.edgeless.systems/marblerun/workflows/define-manifest)
 * the `edgelessdb` package
 * an encryption key `edb_masterkey`
 * a root certificate `edb_rootcert`
@@ -55,7 +55,7 @@ Here's a template:
 ```
 
 ## Launch the MarbleRun Coordinator
-[Set up the MarbleRun Coordinator](https://docs.edgeless.systems/marblerun/#/deployment/cloud?id=deploy-marblerun) and [set the MarbleRun manifest](https://docs.edgeless.systems/marblerun/#/workflows/set-manifest).
+[Set up the MarbleRun Coordinator](https://docs.edgeless.systems/marblerun/deployment/cloud#deploy-marblerun) and [set the MarbleRun manifest](https://docs.edgeless.systems/marblerun/workflows/set-manifest).
 
 ## Launch as a Marble
 To run EdgelessDB as a Marble, add `-marble` as a parameter and define the required Marble definitions as environment variables:

@@ -23,7 +23,7 @@ Architecturally, EdgelessDB is based on [MariaDB](https://github.com/MariaDB/ser
 * Manifest: defines the initial database state, including access control.
 * Remote attestation: proves that the EdgelessDB instance runs in a secure enclave and enforces the manifest.
 
-For details see [concepts](https://docs.edgeless.systems/edgelessdb/#/getting-started/concepts).
+For details see [concepts](https://docs.edgeless.systems/edgelessdb/getting-started/concepts).
 
 ## Getting started
 
@@ -37,7 +37,7 @@ Or try it in simulation mode on any system:
 docker run -t --name my-edb -p3306:3306 -p8080:8080 -e OE_SIMULATION=1 ghcr.io/edgelesssys/edgelessdb-sgx-1gb
 ```
 
-You may want to start with [using EdgelessDB as a high-security SQL database](https://docs.edgeless.systems/edgelessdb/#/getting-started/quickstart-sgx) in a possibly untrusted environment.
+You may want to start with [using EdgelessDB as a high-security SQL database](https://docs.edgeless.systems/edgelessdb/getting-started/quickstart-sgx) in a possibly untrusted environment.
 
 Or [check out the demo](demo) to see how EdgelessDB's confidential-computing features can be used for secure multi-party data processing.
 
