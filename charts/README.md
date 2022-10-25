@@ -2,7 +2,7 @@
 
 ## Documentation
 
-See the [docs](https://docs.edgeless.systems/edgelessdb/#/) for a comprehensive documentation of EdgelessDB.
+See the [docs](https://docs.edgeless.systems/edgelessdb) for a comprehensive documentation of EdgelessDB.
 
 ## Add Repository (stable)
 

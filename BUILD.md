@@ -85,7 +85,7 @@ MARIADB_CC_TEST=1 MYSQL_TEST_TLS=1 ctest --output-on-failure
 ```
 
 ## Configuration
-In addition to the [end user configuration](https://docs.edgeless.systems/edgelessdb/#/reference/configuration), the following environment variables may be useful for development:
+In addition to the [end user configuration](https://docs.edgeless.systems/edgelessdb/reference/configuration), the following environment variables may be useful for development:
 * `EDG_EDB_DATA_PATH`: The path on the host file system where EdgelessDB will store its data. Defaults to `$PWD/data`.
 
 ## Run emariadbd

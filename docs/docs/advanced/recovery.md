@@ -2,7 +2,7 @@
 
 :::note
 
-Recovery is only available when EdgelessDB is running standalone, and only when a recovery key has been defined in the manifest. When used with MarbleRun, consider using its [recovery feature](https://docs.edgeless.systems/marblerun/#/features/recovery).
+Recovery is only available when EdgelessDB is running standalone, and only when a recovery key has been defined in the manifest. When used with MarbleRun, consider using its [recovery feature](https://docs.edgeless.systems/marblerun/features/recovery).
 
 :::
 

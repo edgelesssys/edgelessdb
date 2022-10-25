@@ -1,7 +1,7 @@
 # EdgelessDB demo walkthrough
 This demo shows how to initialize EdgelessDB with a manifest and how users verify and connect to EdgelessDB.
 
-Familiarize yourself with the EdgelessDB [concepts](https://docs.edgeless.systems/edgelessdb/#/getting-started/concepts) before proceeding.
+Familiarize yourself with the EdgelessDB [concepts](https://docs.edgeless.systems/edgelessdb/getting-started/concepts) before proceeding.
 
 We consider these roles:
 * The *owner* creates the manifest and initializes EdgelessDB
@@ -9,7 +9,7 @@ We consider these roles:
 * *Writers* can write to a set of tables (but not read)
 
 Prerequisites:
-* EdgelessDB is [installed](https://docs.edgeless.systems/edgelessdb/#/getting-started/install) and running
+* EdgelessDB is [installed](https://docs.edgeless.systems/edgelessdb/getting-started/install) and running
 * [era](https://github.com/edgelesssys/era) and [mysql-client](https://packages.ubuntu.com/focal/mysql-client) are installed
 
 ## Generate keys and certificates
