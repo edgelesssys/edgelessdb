@@ -292,7 +292,7 @@ std::optional<int> SyscallHandler::Rename(const char* oldpath, const char* newpa
 std::optional<int> SyscallHandler::Unlink(const char* pathname) {
   assert(pathname && *pathname);
 
-  const string_view path = pathname;
+  const string path = NormalizePath(pathname);
   if (!IsKnownExtension(path))
     return {};
 
