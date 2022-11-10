@@ -58,7 +58,7 @@ See [the docs](https://docs.edgeless.systems/edgelessdb) for details on Edgeless
 * [BUILD.md](BUILD.md) includes general information on how to work in this repo.
 * Pull requests are welcome! You need to agree to our [Contributor License Agreement](https://cla-assistant.io/edgelesssys/edgelessdb).
 * This project and everyone participating in it are governed by the [Code of Conduct](/CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
-* To report a security issue, write to security@edgeless.systems.
+* Please report any security issue via a [private GitHub vulnerability report](https://github.com/edgelesssys/edgelessdb/security/advisories/new) or write to security@edgeless.systems.
 
 <!-- refs -->
 [unit-tests]: https://github.com/edgelesssys/edgelessdb/actions
