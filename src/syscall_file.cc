@@ -1,4 +1,5 @@
 /* Copyright (c) Edgeless Systems GmbH
+   Copyright (c) 2022 Intel Corporation
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -132,21 +133,37 @@ static oe_off_t file_lseek(oe_fd_t* desc, oe_off_t offset, int whence) {
 }
 
 static ssize_t file_pread(
-    oe_fd_t* /*desc*/,
-    void* /*buf*/,
-    size_t /*count*/,
-    oe_off_t /*offset*/) {
-  errno = ENOSYS;
-  return -1;
+    oe_fd_t* desc,
+    void* buf,
+    size_t count,
+    oe_off_t offset) {
+  try {
+    auto& file = *reinterpret_cast<File*>(desc);
+    const lock_guard lock(file.mut);
+    const size_t res = file.handler->Read(file.path, buf, count, offset);
+    return res;
+  } catch (const exception& ex) {
+    oe_log(OE_LOG_LEVEL_ERROR, "file_pread: %s\n", ex.what());
+    errno = EIO;
+    return -1;
+  }
 }
 
 static ssize_t file_pwrite(
-    oe_fd_t* /*desc*/,
-    const void* /*buf*/,
-    size_t /*count*/,
-    oe_off_t /*offset*/) {
-  errno = ENOSYS;
-  return -1;
+    oe_fd_t* desc,
+    const void* buf,
+    size_t count,
+    oe_off_t offset) {
+  try {
+    auto& file = *reinterpret_cast<File*>(desc);
+    const lock_guard lock(file.mut);
+    file.handler->Write(file.path, string_view(static_cast<const char*>(buf), count), offset);
+    return count;
+  } catch (const exception& ex) {
+    oe_log(OE_LOG_LEVEL_ERROR, "file_pwrite: %s\n", ex.what());
+    errno = EIO;
+    return -1;
+  }
 }
 
 static int file_getdents64(
@@ -180,9 +197,18 @@ static int file_fstat(oe_fd_t* desc, struct oe_stat_t* buf) {
   return 0;
 }
 
-static int file_ftruncate(oe_fd_t* /*desc*/, oe_off_t /*length*/) {
-  errno = ENOSYS;
-  return -1;
+static int file_ftruncate(oe_fd_t* desc, oe_off_t length) {
+  try {
+    auto& file = *reinterpret_cast<File*>(desc);
+    const lock_guard lock(file.mut);
+    file.handler->Truncate(file.path, length);
+  } catch (const exception& ex) {
+    oe_log(OE_LOG_LEVEL_ERROR, "file_ftruncate: %s\n", ex.what());
+    errno = EIO;
+    return -1;
+  }
+
+  return 0;
 }
 
 static int file_fsync(oe_fd_t* /*desc*/) {

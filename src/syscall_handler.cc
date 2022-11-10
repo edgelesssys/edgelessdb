@@ -1,4 +1,5 @@
 /* Copyright (c) Edgeless Systems GmbH
+   Copyright (c) 2022 Intel Corporation
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -33,7 +34,7 @@ using namespace std;
 using namespace edb;
 
 static const regex re_folder(R"(\./[^./]+/?)");
-static const regex re_path_to_known_file(R"(\./[^./]+/(db\.opt|[^./]+\.frm))");
+static const regex re_path_to_known_file(R"(\./[^./]+/(db\.opt|[^./]+\.frm|[^./]+\.MAD|[^./]+\.MAI))");
 static const regex re_path_to_temp_frm_file(R"(\./[^./]+/[^./]+\.frm~)");
 static constexpr string_view temp_frm_ext = ".frm~";
 
@@ -42,11 +43,11 @@ static bool StrEndsWith(string_view str, string_view suffix) {
 }
 
 static bool IsKnownExtension(string_view path) {
-  return StrEndsWith(path, ".frm") || StrEndsWith(path, ".opt");
+  return StrEndsWith(path, ".frm") || StrEndsWith(path, ".opt") || StrEndsWith(path, ".MAD") || StrEndsWith(path, ".MAI");
 }
 
 static string_view GetCf(string_view path) {
-  if (StrEndsWith(path, ".frm"))
+  if (StrEndsWith(path, ".frm") || StrEndsWith(path, ".MAD") || StrEndsWith(path, ".MAI"))
     return kCfNameFrm;
   if (StrEndsWith(path, ".opt"))
     return kCfNameDb;
@@ -163,6 +164,20 @@ void SyscallHandler::Write(std::string_view path, std::string_view buf, size_t o
   memcpy(value.data() + offset, buf.data(), buf.size());
 
   store_->Put(cf, path, value);
+}
+
+void SyscallHandler::Truncate(std::string_view path, size_t offset) {
+  const string_view cf = GetCf(path);
+
+  const lock_guard lock(mutex_);
+
+  if (offset == 0) {
+    store_->Delete(cf, path);
+  } else {
+    string value = store_->Get(cf, path).value_or(string());
+    value.resize(offset);
+    store_->Put(cf, path, value);
+  }
 }
 
 size_t SyscallHandler::Size(std::string_view path) const {

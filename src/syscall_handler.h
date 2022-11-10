@@ -1,4 +1,5 @@
 /* Copyright (c) Edgeless Systems GmbH
+   Copyright (c) 2022 Intel Corporation
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -47,6 +48,7 @@ class SyscallHandler final {
   size_t Read(std::string_view path, void* buf, size_t count, size_t offset) const;
   void Write(std::string_view path, std::string_view buf, size_t offset);
   size_t Size(std::string_view path) const;
+  void Truncate(std::string_view path, size_t offset);
 
  private:
   std::optional<int> Open(const char* pathname, int flags);

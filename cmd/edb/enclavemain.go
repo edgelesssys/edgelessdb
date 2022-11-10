@@ -1,6 +1,7 @@
 // +build enclave
 
 /* Copyright (c) Edgeless Systems GmbH
+   Copyright (c) 2022 Intel Corporation
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -82,6 +83,12 @@ func main() {
 		panic(err)
 	}
 	if err := syscall.Mount(filepath.Join(absDataPath, "#rocksdb"), "/data/#rocksdb", "oe_host_file_system", 0, ""); err != nil {
+		panic(err)
+	}
+	if err := os.MkdirAll(path.Join(hostPath(absDataPath), "edb-data"), 0700); err != nil {
+		panic(err)
+	}
+	if err := syscall.Mount(filepath.Join(absDataPath, "edb-data"), "/data/edb-data", "oe_host_file_system", 0, ""); err != nil {
 		panic(err)
 	}
 
