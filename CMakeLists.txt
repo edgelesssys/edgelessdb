@@ -37,11 +37,11 @@ set(MARIADB_CMAKE_ARGS
   -DPLUGIN_FEDERATED=NO
   -DPLUGIN_FEDERATEDX=NO
   -DPLUGIN_FEEDBACK=NO
-  -DPLUGIN_FILE_KEY_MANAGEMENT=NO
+  -DPLUGIN_FILE_KEY_MANAGEMENT=STATIC
   -DPLUGIN_FTEXAMPLE=NO
   -DPLUGIN_FUNC_TEST=NO
   -DPLUGIN_HANDLERSOCKET=NO
-  -DPLUGIN_INNOBASE=NO
+  -DPLUGIN_INNOBASE=STATIC
   -DPLUGIN_LOCALES=NO
   -DPLUGIN_METADATA_LOCK_INFO=NO
   -DPLUGIN_MROONGA=NO
@@ -108,6 +108,10 @@ set(MARIADB_LIBS
   ${MARIADB}/sql/libsql_builtins.a
   ${MARIADB}/vio/libvio.a
   ${MARIADB}/extra/pcre2/src/pcre2-build/libpcre2-8.a
+  ${MARIADB}/storage/innobase/libinnobase.a
+  lzo2
+  lzma
+  lz4
   ${MARIADB}/tpool/libtpool.a
   ${MARIADB}/storage/maria/libaria.a
   ${MARIADB}/mysys_ssl/libmysys_ssl.a
@@ -126,12 +130,16 @@ set(MARIADB_LIBS
   ${MARIADB}/plugin/type_geom/libtype_geom.a
   ${MARIADB}/plugin/type_inet/libtype_inet.a
   ${MARIADB}/plugin/userstat/libuserstat.a
+  ${MARIADB}/plugin/file_key_management/libfile_key_management.a
   ${MARIADB}/wsrep-lib/src/libwsrep-lib.a
   ${MARIADB}/wsrep-lib/wsrep-API/libwsrep_api_v26.a
   ${MARIADB}/storage/rocksdb/librocksdb_se.a
   ${MARIADB}/storage/rocksdb/librocksdb_aux_lib.a
   ${MARIADB}/storage/rocksdb/librocksdblib.a
   lz4
+  zstd
+  bz2
+  snappy
 )
 
 set(MARIADB_LIBC -static-libgcc -static-libstdc++
@@ -150,6 +158,11 @@ math(EXPR ENCLAVECONF_NUMHEAPPAGES "${HEAPSIZE} * 256")
 set(ENCLAVECONF_DEBUG 1)
 if(PRODUCTION)
   set(ENCLAVECONF_DEBUG 0)
+endif()
+
+set(ENCLAVECONF_NUMTCS 64)
+if (NUMTCS)
+  set(ENCLAVECONF_NUMTCS ${NUMTCS})
 endif()
 
 configure_file(src/enclave.conf enclave.conf)

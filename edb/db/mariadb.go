@@ -1,4 +1,5 @@
 /* Copyright (c) Edgeless Systems GmbH
+   Copyright (c) 2022 Intel Corporation
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -263,13 +264,17 @@ FLUSH PRIVILEGES;
 CREATE DATABASE $edgeless;
 CREATE TABLE $edgeless.config (c BLOB, k BLOB, m BLOB);
 INSERT INTO $edgeless.config VALUES (%#x, %#x, %#x);
+FLUSH TABLES;
 `, mariadbBootstrap, queries, d.cert, key, jsonManifest)
 
 	cnf := `
 [mysqld]
 datadir=` + d.externalPath + `
+innodb_data_home_dir = ` + filepath.Join(d.externalPath, "edb-data") + `
+tmpdir = ` + filepath.Join(d.externalPath, "edb-data") + `
+innodb-log-group-home-dir = ` + filepath.Join(d.externalPath, "edb-data") + `
+innodb_file_per_table=OFF
 default-storage-engine=ROCKSDB
-enforce-storage-engine=ROCKSDB
 log-error =` + filepath.Join(d.internalPath, filenameBootstrapLog) + `
 bootstrap
 init-file=` + filepath.Join(d.internalPath, filenameInit) + `
@@ -296,8 +301,11 @@ func (d *Mariadb) configureStart() error {
 	cnf := `
 [mysqld]
 datadir=` + d.externalPath + `
+innodb_data_home_dir = ` + filepath.Join(d.externalPath, "edb-data") + `
+tmpdir = ` + filepath.Join(d.externalPath, "edb-data") + `
+innodb-log-group-home-dir = ` + filepath.Join(d.externalPath, "edb-data") + `
+innodb_file_per_table=OFF
 default-storage-engine=ROCKSDB
-enforce-storage-engine=ROCKSDB
 user=root
 bind-address=` + host + `
 port=` + port + `
