@@ -44,7 +44,7 @@ var initialWorkingDir = func() string {
 	return wd
 }()
 
-func (runtime) RestartHostProcess() {
+func (executionEnv) RestartHostProcess() {
 	if err := os.Chdir(initialWorkingDir); err != nil {
 		panic(err)
 	}
