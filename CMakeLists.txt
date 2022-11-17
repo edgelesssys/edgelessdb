@@ -152,6 +152,11 @@ if(PRODUCTION)
   set(ENCLAVECONF_DEBUG 0)
 endif()
 
+set(ENCLAVECONF_NUMTCS 64)
+if (NUMTCS)
+  set(ENCLAVECONF_NUMTCS ${NUMTCS})
+endif()
+
 configure_file(src/enclave.conf enclave.conf)
 
 #
