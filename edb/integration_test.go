@@ -301,6 +301,33 @@ func TestAlterTable(t *testing.T) {
 	assert.NoError(err)
 }
 
+func TestManyConnections(t *testing.T) {
+	require := require.New(t)
+
+	caCert, caKey := createCertificate("ca", "", "")
+	usrCert, usrKey := createCertificate("usr", caCert, caKey)
+
+	manifest := createManifest(caCert, []string{
+		"CREATE USER usr REQUIRE ISSUER '/CN=ca' SUBJECT '/CN=usr'",
+	}, false, "")
+
+	setConfig(false, "")
+	defer cleanupConfig()
+	process := startEDB("")
+	require.NotNil(process)
+	defer process.Kill()
+
+	serverCert := getServerCertificate()
+	_, err := postManifest(serverCert, manifest, true)
+	require.NoError(err)
+
+	for i := 0; i < 150; i++ {
+		db := sqlOpen("usr", usrCert, usrKey, serverCert)
+		defer db.Close()
+		require.NoError(db.Ping())
+	}
+}
+
 func TestMisc(t *testing.T) {
 	assert := assert.New(t)
 	require := require.New(t)

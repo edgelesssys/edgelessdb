@@ -24,12 +24,16 @@ import (
 )
 
 func run(cfg core.Config, isMarble bool, internalPath string, internalAddress string) {
-	db, err := db.NewMariadb(internalPath, cfg.DataPath, internalAddress, cfg.DatabaseAddress, cfg.CertificateDNSName, cfg.LogDir, cfg.Debug, isMarble, mariadbd{})
+	var rt executionEnv
+
+	// There are quite a few MariaDB and RocksDB helper threads in addition to pool threads. Let's be rather generous here.
+	maxPoolThreads := rt.GetNumTCS() - 32
+
+	db, err := db.NewMariadb(internalPath, cfg.DataPath, internalAddress, cfg.DatabaseAddress, cfg.CertificateDNSName, cfg.LogDir, cfg.Debug, isMarble, mariadbd{}, maxPoolThreads)
 	if err != nil {
 		panic(err)
 	}
 
-	var rt runtime
 	fs := afero.Afero{Fs: afero.NewOsFs()}
 	core := core.NewCore(cfg, rt, db, fs, isMarble)
 

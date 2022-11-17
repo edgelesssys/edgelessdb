@@ -97,3 +97,7 @@ func (executionEnv) GetProductSealKey() ([]byte, error) {
 func (executionEnv) IsEnclave() bool {
 	return false
 }
+
+func (executionEnv) GetNumTCS() int {
+	return 64
+}
