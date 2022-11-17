@@ -56,6 +56,7 @@ make -j`nproc`
 You may add the following flags to the `cmake` command:
 * `-DCMAKE_BUILD_TYPE=Release` to enable optimizations.
 * `-DHEAPSIZE=x` where x is the desired enclave heap size in MB. By default, heap size is 1024 MB.
+* `-DNUMTCS=x` where x is the desired number of TCS (max threads). By default, number of TCS is 64.
 * `-DPRODUCTION=ON` to build a production enclave.
 
 ### Run
