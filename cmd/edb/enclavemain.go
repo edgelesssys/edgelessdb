@@ -116,17 +116,17 @@ func hostPath(path string) string {
 	return filepath.Join(filepath.FromSlash("/edg"), "hostfs", filepath.Clean(path))
 }
 
-type runtime struct{}
+type executionEnv struct{}
 
-func (runtime) GetRemoteReport(reportData []byte) ([]byte, error) {
+func (executionEnv) GetRemoteReport(reportData []byte) ([]byte, error) {
 	return enclave.GetRemoteReport(reportData)
 }
 
-func (runtime) GetProductSealKey() ([]byte, error) {
+func (executionEnv) GetProductSealKey() ([]byte, error) {
 	key, _, err := enclave.GetProductSealKey()
 	return key, err
 }
 
-func (runtime) IsEnclave() bool {
+func (executionEnv) IsEnclave() bool {
 	return true
 }

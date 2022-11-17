@@ -69,7 +69,7 @@ func main() {
 	fmt.Println("This means edb will save the encryption key used IN PLAINTEXT on the disk.")
 	fmt.Println("THIS IS OBVIOUSLY NOT SECURE AT ALL FOR PRODUCTION!")
 	fmt.Println("Only ever use non-enclave mode for testing, please...")
-	if err := os.MkdirAll(path.Join(hostPath(config.DataPath), core.PersistenceDir), 0700); err != nil && !os.IsExist(err) {
+	if err := os.MkdirAll(path.Join(hostPath(config.DataPath), core.PersistenceDir), 0o700); err != nil && !os.IsExist(err) {
 		panic(err)
 	}
 
@@ -84,16 +84,16 @@ func hostPath(path string) string {
 	return result
 }
 
-type runtime struct{}
+type executionEnv struct{}
 
-func (runtime) GetRemoteReport(reportData []byte) ([]byte, error) {
+func (executionEnv) GetRemoteReport(reportData []byte) ([]byte, error) {
 	return nil, errors.New("GetRemoteReport: not running in an enclave")
 }
 
-func (runtime) GetProductSealKey() ([]byte, error) {
+func (executionEnv) GetProductSealKey() ([]byte, error) {
 	return make([]byte, 16), nil
 }
 
-func (runtime) IsEnclave() bool {
+func (executionEnv) IsEnclave() bool {
 	return false
 }
