@@ -22,6 +22,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"runtime"
 	"syscall"
 
 	"github.com/edgelesssys/edgelessdb/edb/core"
@@ -37,6 +38,9 @@ var gitCommit = "0000000000000000000000000000000000000000"
 const internalPath = "/tmp/edb" // supposed to be mounted in emain.cpp
 
 func main() {
+	// The Go portions of EDB aren't performance-critical, so limit max procs to have more threads available for MariaDB.
+	runtime.GOMAXPROCS(2)
+
 	rt.Log.Printf("EdgelessDB v%v (%v)\n", version, gitCommit)
 
 	runAsMarble := flag.Bool("marble", false, "Run edb with Marblerun")

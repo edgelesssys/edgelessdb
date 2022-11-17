@@ -31,6 +31,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/edgelesssys/edgelessdb/edb/rt"
@@ -72,6 +73,7 @@ type Mariadb struct {
 	debug                            bool
 	debugLogDir                      string
 	mariadbd                         Mariadbd
+	maxPoolThreads                   int
 	cert                             []byte
 	key                              crypto.PrivateKey
 	manifestSig                      []byte
@@ -80,8 +82,8 @@ type Mariadb struct {
 }
 
 // NewMariadb creates a new Mariadb object.
-func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateDNSName, logDir string, debug bool, isMarble bool, mariadbd Mariadbd) (*Mariadb, error) {
-	if err := os.MkdirAll(externalPath, 0700); err != nil {
+func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, certificateDNSName, logDir string, debug bool, isMarble bool, mariadbd Mariadbd, maxPoolThreads int) (*Mariadb, error) {
+	if err := os.MkdirAll(externalPath, 0o700); err != nil {
 		return nil, err
 	}
 	d := &Mariadb{
@@ -92,6 +94,7 @@ func NewMariadb(internalPath, externalPath, internalAddress, externalAddress, ce
 		debug:           debug,
 		debugLogDir:     logDir,
 		mariadbd:        mariadbd,
+		maxPoolThreads:  maxPoolThreads,
 	}
 
 	var cert []byte
@@ -302,6 +305,8 @@ user=root
 bind-address=` + host + `
 port=` + port + `
 skip-name-resolve
+thread-handling=pool-of-threads
+thread-pool-max-threads=` + strconv.Itoa(d.maxPoolThreads) + `
 require-secure-transport=1
 ssl-ca = "` + filepath.Join(d.internalPath, filenameCA) + `"
 ssl-cert = "` + filepath.Join(d.internalPath, filenameCert) + `"
@@ -369,7 +374,7 @@ func (d *Mariadb) writeCertificates() error {
 }
 
 func (d *Mariadb) writeFile(filename string, data []byte) error {
-	return ioutil.WriteFile(filepath.Join(d.internalPath, filename), data, 0600)
+	return ioutil.WriteFile(filepath.Join(d.internalPath, filename), data, 0o600)
 }
 
 func getConfigFromSQL(address string) (cert []byte, key crypto.PrivateKey, config []byte, err error) {
