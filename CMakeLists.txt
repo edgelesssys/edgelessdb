@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(edb VERSION 0.3.1)
+project(edb VERSION 0.3.2)
 
 if (NOT CMAKE_BUILD_TYPE)
   set(CMAKE_BUILD_TYPE Debug)
