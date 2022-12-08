@@ -1,4 +1,4 @@
-FROM ghcr.io/edgelesssys/edgelessdb/build-base:v0.3.1 AS build
+FROM ghcr.io/edgelesssys/edgelessdb/build-base:v0.3.2 AS build
 
 # don't run `apt-get update` because required packages are cached in build-base for reproducibility
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -15,8 +15,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
   ninja-build \
   zlib1g-dev
 
-ARG erttag=v0.3.5
-ARG edbtag=v0.3.1
+ARG erttag=v0.3.6
+ARG edbtag=v0.3.2
 RUN git clone -b $erttag --depth=1 https://github.com/edgelesssys/edgelessrt \
   && git clone -b $edbtag --depth=1 https://github.com/edgelesssys/edgelessdb \
   && mkdir ertbuild edbbuild
@@ -42,9 +42,9 @@ RUN --mount=type=secret,id=signingkey,dst=/edbbuild/private.pem,required=true \
   && cat edgelessdb-sgx.json
 
 # deploy
-FROM ubuntu:focal-20220801
-ARG PSW_VERSION=2.17.100.3-focal1
-ARG DCAP_VERSION=1.14.100.3-focal1
+FROM ubuntu:focal-20221019
+ARG PSW_VERSION=2.18.100.3-focal1
+ARG DCAP_VERSION=1.15.100.3-focal1
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates gnupg libcurl4 wget \
   && wget -qO- https://download.01.org/intel-sgx/sgx_repo/ubuntu/intel-sgx-deb.key | apt-key add \
   && echo 'deb [arch=amd64] https://download.01.org/intel-sgx/sgx_repo/ubuntu focal main' >> /etc/apt/sources.list \
