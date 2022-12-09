@@ -9,6 +9,8 @@ DOCKER_BUILDKIT=1 docker build -t edb --secret id=signingkey,src=private.pem - <
 
 Add `--build-arg heapsize=x` where x is the desired enclave heap size in MB. By default, heap size is 1024 MB.
 
+Add `--build-arg numtcs=x` where x is the desired number of TCS (max threads). By default, number of TCS is 64.
+
 Add `--build-arg production=ON` to build a production enclave. By default, a debug enclave is built.
 
 Get the [era](https://github.com/edgelesssys/era) configuration:

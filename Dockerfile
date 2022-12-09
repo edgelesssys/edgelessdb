@@ -33,11 +33,13 @@ RUN cd edgelessdb && export SOURCE_DATE_EPOCH=$(git log -1 --pretty=%ct) && cd /
   && make -j`nproc` edb-enclave
 
 # sign edb
-ARG heapsize=1024 production=OFF
+ARG heapsize=1024
+ARG numtcs=64
+ARG production=OFF
 RUN --mount=type=secret,id=signingkey,dst=/edbbuild/private.pem,required=true \
   cd edbbuild \
   && . /opt/edgelessrt/share/openenclave/openenclaverc \
-  && cmake -DHEAPSIZE=$heapsize -DPRODUCTION=$production /edgelessdb \
+  && cmake -DHEAPSIZE=$heapsize -DNUMTCS=$numtcs -DPRODUCTION=$production /edgelessdb \
   && make sign-edb \
   && cat edgelessdb-sgx.json
 
