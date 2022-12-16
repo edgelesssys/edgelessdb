@@ -1,8 +1,8 @@
 #!/bin/sh
 set -e
 
-if [ ! -d /dev/sgx ]; then
-	mkdir -p /dev/sgx
+mkdir -p /dev/sgx
+if [ ! -L /dev/sgx/enclave ]; then
 	ln -s /dev/sgx_enclave /dev/sgx/enclave
 fi
 
