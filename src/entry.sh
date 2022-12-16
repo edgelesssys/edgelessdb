@@ -1,8 +1,10 @@
 #!/bin/sh
 set -e
 
-mkdir -p /dev/sgx
-ln -s /dev/sgx_enclave /dev/sgx/enclave
+if [ ! -d /dev/sgx ]; then
+	mkdir -p /dev/sgx
+	ln -s /dev/sgx_enclave /dev/sgx/enclave
+fi
 
 if [ -n "${PCCS_ADDR}" ]; then
 	PCCS_URL=https://${PCCS_ADDR}/sgx/certification/v3/
