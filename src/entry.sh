@@ -1,7 +1,7 @@
 #!/bin/sh
 set -e
 
-mkdir /dev/sgx
+mkdir -p /dev/sgx
 ln -s /dev/sgx_enclave /dev/sgx/enclave
 
 if [ -n "${PCCS_ADDR}" ]; then
