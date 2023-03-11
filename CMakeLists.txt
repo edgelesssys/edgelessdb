@@ -212,7 +212,7 @@ add_dependencies(edb-noenclave edb-noenclave-lib mariadb)
 target_link_libraries(edb-noenclave
   ${CMAKE_BINARY_DIR}/edb-noenclave.a
   -Wl,-Bstatic ${MARIADB_LIBS} -Wl,-Bdynamic
-  ${MARIADB_LIBC})
+  ${MARIADB_LIBC} resolv)
 
 #
 # build edb
