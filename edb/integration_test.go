@@ -993,8 +993,14 @@ func waitUntilRestart(serverCert string) {
 	// wait until edb restarted
 	log.Print("waiting for restart ...")
 	for {
-		time.Sleep(10 * time.Millisecond)
-		resp, err := client.Get(url.String())
+		time.Sleep(time.Second)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), http.NoBody)
+		if err != nil {
+			panic(err)
+		}
+		resp, err := client.Do(req)
+		cancel()
 		if err == nil {
 			body, err := ioutil.ReadAll(resp.Body)
 			resp.Body.Close()
